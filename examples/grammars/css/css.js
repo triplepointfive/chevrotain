@@ -249,12 +249,12 @@ const CssLexer = new Lexer(cssTokens)
 // ----------------- parser -----------------
 
 class CssParser extends Parser {
-    // Unfortunately no support for class fields with initializer in ES2015, only in esNext...
+    // Unfortunately no support for class fields with initializer in ES2015, only in ESNext...
     // so the parsing rules are defined inside the constructor, as each parsing rule must be initialized by
     // invoking RULE(...)
     // see: https://github.com/jeffmo/es-class-fields-and-static-properties
-    constructor(input) {
-        super(input, cssTokens, {
+    constructor(input, tokenVocabulary = cssTokens, finishInit = true) {
+        super(input, tokenVocabulary, {
             ignoredIssues: {
                 selector: { OR: true }
             }
@@ -605,10 +605,11 @@ class CssParser extends Parser {
             $.CONSUME(Hash)
         })
 
-        // very important to call this after all the rules have been setup.
-        // otherwise the parser may not work correctly as it will lack information
-        // derived from the self analysis.
-        this.performSelfAnalysis()
+        // Only call performSelfAnalysis once when
+        // extending this grammar
+        if (finishInit) {
+            this.performSelfAnalysis()
+        }
     }
 }
 
@@ -632,5 +633,9 @@ module.exports = {
             lexErrors: lexResult.errors,
             parseErrors: parser.errors
         }
-    }
+    },
+
+    CssParser,
+
+    cssTokens
 }
