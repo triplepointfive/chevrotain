@@ -113,30 +113,15 @@ const Hash = createToken({
     pattern: MAKE_PATTERN("#{{name}}")
 })
 
-// note that the spec defines import as : @{I}{M}{P}{O}{R}{T}
-// Where every letter is defined in this pattern:
-// i|\\0{0,4}(49|69)(\r\n|[ \t\r\n\f])?|\\i
-// Lets count the number of ways to write the letter 'i'
-// i // 2 options due to case insensitivity
-// |
-// \\0{0,4} // 5 options for number of spaces
-// (49|69) // 2 options for asci value
-// (\r\n|[ \t\r\n\f])? // 7 options, so the total for this alternative is 5 * 2 * 7 = 70 (!!!)
-// |
-// \\i // 1 option.
-// so there are a total of 73 options to write the letter 'i'
-// This gives us 73^6 options to write the word "import" which is a number with 12 digits...
-// This implementation does not bother with this crap :) and instead settles for
-// "just" 64 option to write "impPorT" (case due to case insensitivity)
 const ImportSym = createToken({
     name: "ImportSym",
-    pattern: /@import/i
+    pattern: /@import/
 })
-const PageSym = createToken({ name: "PageSym", pattern: /@page/i })
-const MediaSym = createToken({ name: "MediaSym", pattern: /@media/i })
+const PageSym = createToken({ name: "PageSym", pattern: /@page/ })
+const MediaSym = createToken({ name: "MediaSym", pattern: /@media/ })
 const CharsetSym = createToken({
     name: "CharsetSym",
-    pattern: /@charset/i
+    pattern: /@charset/
 })
 const ImportantSym = createToken({
     name: "ImportantSym",
