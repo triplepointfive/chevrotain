@@ -19,11 +19,12 @@ function MAKE_PATTERN(def, flags) {
 
 // ----------------- Lexer -----------------
 
+const orgCreateToken = chevrotain.createToken
 // A Little wrapper to save us the trouble of manually building the
 // array of cssTokens
 const lessTokens = []
 const createToken = function() {
-    const newToken = chevrotain.createToken.apply(null, arguments)
+    const newToken = orgCreateToken.apply(null, arguments)
     lessTokens.push(newToken)
     return newToken
 }
@@ -107,15 +108,57 @@ const Hash = createToken({
     pattern: MAKE_PATTERN("#{{name}}")
 })
 
+const AtIdentifier = orgCreateToken({
+    name: "ImportSym",
+    pattern: /@[a-z-]+/
+})
 const ImportSym = createToken({
     name: "ImportSym",
-    pattern: /@import/
+    pattern: /@import/,
+    longer_alt: AtIdentifier
 })
-const MediaSym = createToken({ name: "MediaSym", pattern: /@media/ })
+const MediaSym = createToken({
+    name: "MediaSym",
+    pattern: /@media/,
+    longer_alt: AtIdentifier
+})
 const CharsetSym = createToken({
     name: "CharsetSym",
-    pattern: /@charset/
+    pattern: /@charset/,
+    longer_alt: AtIdentifier
 })
+const MediaSym = createToken({
+    name: "MediaSym",
+    pattern: /@media/,
+    longer_alt: AtIdentifier
+})
+const NamespaceSym = createToken({
+    name: "NamespaceSym",
+    pattern: /@namespace/,
+    longer_alt: AtIdentifier
+})
+const KeyframesSym = createToken({
+    name: "KeyframesSym",
+    pattern: /@keyframes/,
+    longer_alt: AtIdentifier
+})
+const CounterStyleSym = createToken({
+    name: "CounterStyleSym",
+    pattern: /@counter-style/,
+    longer_alt: AtIdentifier
+})
+const DocumentSym = createToken({
+    name: "DocumentSym",
+    pattern: /@document/,
+    longer_alt: AtIdentifier
+})
+const SupportsSym = createToken({
+    name: "SupportsSym",
+    pattern: /@supports/,
+    longer_alt: AtIdentifier
+})
+
+lessTokens.push(AtIdentifier)
 
 const ImportantSym = createToken({
     name: "ImportantSym",
