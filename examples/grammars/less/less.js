@@ -111,12 +111,12 @@ const ImportSym = createToken({
     name: "ImportSym",
     pattern: /@import/
 })
-const PageSym = createToken({ name: "PageSym", pattern: /@page/ })
 const MediaSym = createToken({ name: "MediaSym", pattern: /@media/ })
 const CharsetSym = createToken({
     name: "CharsetSym",
     pattern: /@charset/
 })
+
 const ImportantSym = createToken({
     name: "ImportantSym",
     pattern: /important/i
@@ -263,8 +263,7 @@ class LessParser extends Parser {
                             { ALT: () => $.SUBRULE($.ruleset) },
                             { ALT: () => $.SUBRULE($.media) },
                             { ALT: () => $.SUBRULE($.charsetHeader) },
-                            { ALT: () => $.SUBRULE($.cssImport) },
-                            { ALT: () => $.SUBRULE($.page) }
+                            { ALT: () => $.SUBRULE($.cssImport) }
                         ])
                 )
             })
@@ -319,17 +318,6 @@ class LessParser extends Parser {
         // IDENT S*
         this.RULE("medium", () => {
             $.CONSUME(Ident)
-        })
-
-        // PAGE_SYM S* pseudo_page?
-        // '{' S* declaration? [ ';' S* declaration? ]* '}' S*
-        this.RULE("page", () => {
-            $.CONSUME(PageSym)
-            $.OPTION(() => {
-                $.SUBRULE($.pseudo_page)
-            })
-
-            $.SUBRULE($.declarationsGroup)
         })
 
         // '{' S* declaration? [ ';' S* declaration? ]* '}' S*
