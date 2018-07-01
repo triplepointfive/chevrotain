@@ -21,10 +21,10 @@ function MAKE_PATTERN(def, flags) {
 
 // A Little wrapper to save us the trouble of manually building the
 // array of cssTokens
-const cssTokens = []
+const lessTokens = []
 const createToken = function() {
     const newToken = chevrotain.createToken.apply(null, arguments)
-    cssTokens.push(newToken)
+    lessTokens.push(newToken)
     return newToken
 }
 
@@ -57,10 +57,7 @@ const Whitespace = createToken({
 const Comment = createToken({
     name: "Comment",
     pattern: /\/\*[^*]*\*+([^/*][^*]*\*+})*\//,
-    group: Lexer.SKIPPED,
-    // note that comments could span multiple lines.
-    // forgetting to enable this flag will cause inaccuracies in the lexer location tracking.
-    line_breaks: true
+    group: Lexer.SKIPPED
 })
 
 // This group has to be defined BEFORE Ident as their prefix is a valid Ident
@@ -82,27 +79,27 @@ const Func = createToken({
     pattern: MAKE_PATTERN("{{ident}}\\(")
 })
 
-const Cdo = createToken({ name: "Cdo", pattern: /<!--/ })
+const Cdo = createToken({ name: "Cdo", pattern: "<!--" })
 // Cdc must be before Minus
-const Cdc = createToken({ name: "Cdc", pattern: /-->/ })
-const Includes = createToken({ name: "Includes", pattern: /~=/ })
-const Dasmatch = createToken({ name: "Dasmatch", pattern: /\|=/ })
-const Exclamation = createToken({ name: "Exclamation", pattern: /!/ })
-const Dot = createToken({ name: "Dot", pattern: /\./ })
-const LCurly = createToken({ name: "LCurly", pattern: /{/ })
-const RCurly = createToken({ name: "RCurly", pattern: /}/ })
-const LSquare = createToken({ name: "LSquare", pattern: /\[/ })
-const RSquare = createToken({ name: "RSquare", pattern: /]/ })
-const LParen = createToken({ name: "LParen", pattern: /\(/ })
-const RParen = createToken({ name: "RParen", pattern: /\)/ })
-const Comma = createToken({ name: "Comma", pattern: /,/ })
-const Colon = createToken({ name: "Colon", pattern: /:/ })
-const SemiColon = createToken({ name: "SemiColon", pattern: /;/ })
-const Equals = createToken({ name: "Equals", pattern: /=/ })
-const Star = createToken({ name: "Star", pattern: /\*/ })
-const Plus = createToken({ name: "Plus", pattern: /\+/ })
-const GreaterThan = createToken({ name: "GreaterThan", pattern: />/ })
-const Slash = createToken({ name: "Slash", pattern: /\// })
+const Cdc = createToken({ name: "Cdc", pattern: "-->" })
+const Includes = createToken({ name: "Includes", pattern: "~=" })
+const Dasmatch = createToken({ name: "Dasmatch", pattern: "|=" })
+const Exclamation = createToken({ name: "Exclamation", pattern: "!" })
+const Dot = createToken({ name: "Dot", pattern: "." })
+const LCurly = createToken({ name: "LCurly", pattern: "{" })
+const RCurly = createToken({ name: "RCurly", pattern: "}" })
+const LSquare = createToken({ name: "LSquare", pattern: "[" })
+const RSquare = createToken({ name: "RSquare", pattern: "]" })
+const LParen = createToken({ name: "LParen", pattern: "(" })
+const RParen = createToken({ name: "RParen", pattern: ")" })
+const Comma = createToken({ name: "Comma", pattern: "," })
+const Colon = createToken({ name: "Colon", pattern: ":" })
+const SemiColon = createToken({ name: "SemiColon", pattern: ";" })
+const Equals = createToken({ name: "Equals", pattern: "=" })
+const Star = createToken({ name: "Star", pattern: "*" })
+const Plus = createToken({ name: "Plus", pattern: "+" })
+const GreaterThan = createToken({ name: "GreaterThan", pattern: ">" })
+const Slash = createToken({ name: "Slash", pattern: "/" })
 
 const StringLiteral = createToken({
     name: "StringLiteral",
@@ -229,23 +226,37 @@ const Ident = createToken({
 
 const Minus = createToken({ name: "Minus", pattern: /-/ })
 
-const LessLexer = new Lexer(cssTokens)
+const LessLexer = new Lexer(lessTokens, { ensureOptimizations: true })
 
 // ----------------- parser -----------------
 
 class LessParser extends Parser {
-    // Unfortunately no support for class fields with initializer in ES2015, only in ESNext...
+    // Unfortunately no support for class fields with initializer in ES2015, only in esNext...
     // so the parsing rules are defined inside the constructor, as each parsing rule must be initialized by
     // invoking RULE(...)
     // see: https://github.com/jeffmo/es-class-fields-and-static-properties
     constructor(input) {
-        super(input, cssTokens, {
+        super(input, lessTokens, {
+            positionTracking: "onlyOffset",
+            // outputCst: true,
             ignoredIssues: {
                 selector: { OR: true }
             }
         })
 
         const $ = this
+
+        // avoids hidden class changes due to performance hacks.
+        this.c1 = undefined
+        this.c2 = undefined
+        this.c3 = undefined
+        this.c4 = undefined
+        this.c5 = undefined
+        this.c6 = undefined
+        this.c7 = undefined
+        this.c8 = undefined
+        this.c9 = undefined
+        this.c10 = undefined
 
         this.RULE("stylesheet", () => {
             // [ CHARSET_SYM STRING ';' ]?
@@ -275,18 +286,20 @@ class LessParser extends Parser {
         })
 
         this.RULE("contents", () => {
-            $.OR([
-                { ALT: () => $.SUBRULE($.ruleset) },
-                { ALT: () => $.SUBRULE($.media) },
-                { ALT: () => $.SUBRULE($.page) }
-            ])
+            $.OR(
+                $.c3 ||
+                    ($.c3 = [
+                        { ALT: () => $.SUBRULE($.ruleset) },
+                        { ALT: () => $.SUBRULE($.media) },
+                        { ALT: () => $.SUBRULE($.page) }
+                    ])
+            )
             $.SUBRULE3($.cdcCdo)
         })
 
         // factor out repeating pattern for cdc/cdo
         this.RULE("cdcCdo", () => {
             $.MANY(() => {
-                // prettier-ignore
                 $.OR([
                     { ALT: () => $.CONSUME(Cdo) },
                     { ALT: () => $.CONSUME(Cdc) }
@@ -299,10 +312,13 @@ class LessParser extends Parser {
         this.RULE("cssImport", () => {
             $.CONSUME(ImportSym)
 
-            $.OR([
-                { ALT: () => $.CONSUME(StringLiteral) },
-                { ALT: () => $.CONSUME(Uri) }
-            ])
+            $.OR(
+                $.c4 ||
+                    ($.c4 = [
+                        { ALT: () => $.CONSUME(StringLiteral) },
+                        { ALT: () => $.CONSUME(Uri) }
+                    ])
+            )
 
             $.OPTION(() => {
                 $.SUBRULE($.media_list)
@@ -380,10 +396,13 @@ class LessParser extends Parser {
 
         // '+' S* | '>' S*
         this.RULE("combinator", () => {
-            $.OR([
-                { ALT: () => $.CONSUME(Plus) },
-                { ALT: () => $.CONSUME(GreaterThan) }
-            ])
+            $.OR(
+                $.c5 ||
+                    ($.c5 = [
+                        { ALT: () => $.CONSUME(Plus) },
+                        { ALT: () => $.CONSUME(GreaterThan) }
+                    ])
+            )
         })
 
         // '-' | '+'
@@ -402,13 +421,14 @@ class LessParser extends Parser {
         // selector [ ',' S* selector ]*
         // '{' S* declaration? [ ';' S* declaration? ]* '}' S*
         this.RULE("ruleset", () => {
-            $.MANY_SEP({
-                SEP: Comma,
-                DEF: () => {
-                    $.SUBRULE($.selector)
-                }
+            $.OPTION(() => {
+                $.SUBRULE($.selector)
             })
 
+            $.MANY(() => {
+                $.CONSUME(Comma)
+                $.SUBRULE2($.selector)
+            })
             $.SUBRULE($.declarationsGroup)
         })
 
@@ -416,62 +436,74 @@ class LessParser extends Parser {
         this.RULE("selector", () => {
             $.SUBRULE($.simple_selector)
             $.OPTION(() => {
-                $.OR([
-                    {
-                        GATE: () => {
-                            const prevToken = $.LA(0)
-                            const nextToken = $.LA(1)
-                            //  This is the only place in CSS where the grammar is whitespace sensitive.
-                            return nextToken.startOffset > prevToken.endOffset
-                        },
-                        ALT: () => {
-                            $.OPTION2(() => {
-                                $.SUBRULE($.combinator)
-                            })
-                            $.SUBRULE($.selector)
-                        }
-                    },
-                    {
-                        ALT: () => {
-                            $.SUBRULE2($.combinator)
-                            $.SUBRULE2($.selector)
-                        }
-                    }
-                ])
+                $.OR(
+                    $.c6 ||
+                        ($.c6 = [
+                            {
+                                GATE: () => {
+                                    const prevToken = $.LA(0)
+                                    const nextToken = $.LA(1)
+                                    //  This is the only place in CSS where the grammar is whitespace sensitive.
+                                    return (
+                                        nextToken.startOffset >
+                                        prevToken.endOffset
+                                    )
+                                },
+                                ALT: () => {
+                                    $.OPTION2(() => {
+                                        $.SUBRULE($.combinator)
+                                    })
+                                    $.SUBRULE($.selector)
+                                }
+                            },
+                            {
+                                ALT: () => {
+                                    $.SUBRULE2($.combinator)
+                                    $.SUBRULE2($.selector)
+                                }
+                            }
+                        ])
+                )
             })
         })
 
         // element_name [ HASH | class | attrib | pseudo ]*
         // | [ HASH | class | attrib | pseudo ]+
         this.RULE("simple_selector", () => {
-            $.OR([
-                {
-                    ALT: () => {
-                        $.SUBRULE($.element_name)
-                        $.MANY(() => {
-                            $.SUBRULE($.simple_selector_suffix)
-                        })
-                    }
-                },
-                {
-                    ALT: () => {
-                        $.AT_LEAST_ONE(() => {
-                            $.SUBRULE2($.simple_selector_suffix)
-                        })
-                    }
-                }
-            ])
+            $.OR(
+                $.c7 ||
+                    ($.c7 = [
+                        {
+                            ALT: () => {
+                                $.SUBRULE($.element_name)
+                                $.MANY(() => {
+                                    $.SUBRULE($.simple_selector_suffix)
+                                })
+                            }
+                        },
+                        {
+                            ALT: () => {
+                                $.AT_LEAST_ONE(() => {
+                                    $.SUBRULE2($.simple_selector_suffix)
+                                })
+                            }
+                        }
+                    ])
+            )
         })
 
         // helper grammar rule to avoid repetition
         // [ HASH | class | attrib | pseudo ]+
         this.RULE("simple_selector_suffix", () => {
-            $.OR([
-                { ALT: () => $.CONSUME(Hash) },
-                { ALT: () => $.SUBRULE($.class) },
-                { ALT: () => $.SUBRULE($.attrib) },
-                { ALT: () => $.SUBRULE($.pseudo) }
-            ])
+            $.OR(
+                $.c2 ||
+                    ($.c2 = [
+                        { ALT: () => $.CONSUME(Hash) },
+                        { ALT: () => $.SUBRULE($.class) },
+                        { ALT: () => $.SUBRULE($.attrib) },
+                        { ALT: () => $.SUBRULE($.pseudo) }
+                    ])
+            )
         })
 
         // '.' IDENT
@@ -494,16 +526,22 @@ class LessParser extends Parser {
             $.CONSUME(Ident)
 
             this.OPTION(() => {
-                $.OR([
-                    { ALT: () => $.CONSUME(Equals) },
-                    { ALT: () => $.CONSUME(Includes) },
-                    { ALT: () => $.CONSUME(Dasmatch) }
-                ])
+                $.OR(
+                    $.c8 ||
+                        ($.c8 = [
+                            { ALT: () => $.CONSUME(Equals) },
+                            { ALT: () => $.CONSUME(Includes) },
+                            { ALT: () => $.CONSUME(Dasmatch) }
+                        ])
+                )
 
-                $.OR2([
-                    { ALT: () => $.CONSUME2(Ident) },
-                    { ALT: () => $.CONSUME(StringLiteral) }
-                ])
+                $.OR2(
+                    $.c9 ||
+                        ($.c9 = [
+                            { ALT: () => $.CONSUME2(Ident) },
+                            { ALT: () => $.CONSUME(StringLiteral) }
+                        ])
+                )
             })
             $.CONSUME(RSquare)
         })
@@ -512,18 +550,21 @@ class LessParser extends Parser {
         this.RULE("pseudo", () => {
             $.CONSUME(Colon)
 
-            $.OR([
-                { ALT: () => $.CONSUME(Ident) },
-                {
-                    ALT: () => {
-                        $.CONSUME(Func)
-                        $.OPTION(() => {
-                            $.CONSUME2(Ident)
-                        })
-                        $.CONSUME(RParen)
-                    }
-                }
-            ])
+            $.OR(
+                $.c10 ||
+                    ($.c10 = [
+                        { ALT: () => $.CONSUME(Ident) },
+                        {
+                            ALT: () => {
+                                $.CONSUME(Func)
+                                $.OPTION(() => {
+                                    $.CONSUME2(Ident)
+                                })
+                                $.CONSUME(RParen)
+                            }
+                        }
+                    ])
+            )
         })
 
         // property ':' S* expr prio?
@@ -562,21 +603,26 @@ class LessParser extends Parser {
                 $.SUBRULE($.unary_operator)
             })
 
-            $.OR([
-                { ALT: () => $.CONSUME(Num) },
-                { ALT: () => $.CONSUME(Percentage) },
-                { ALT: () => $.CONSUME(Length) },
-                { ALT: () => $.CONSUME(Ems) },
-                { ALT: () => $.CONSUME(Exs) },
-                { ALT: () => $.CONSUME(Angle) },
-                { ALT: () => $.CONSUME(Time) },
-                { ALT: () => $.CONSUME(Freq) },
-                { ALT: () => $.CONSUME(StringLiteral) },
-                { ALT: () => $.CONSUME(Ident) },
-                { ALT: () => $.CONSUME(Uri) },
-                { ALT: () => $.SUBRULE($.hexcolor) },
-                { ALT: () => $.SUBRULE($.cssFunction) }
-            ])
+            // performance hack - http://sap.github.io/chevrotain/docs/FAQ.html#major-performance-benefits
+            // Look for: "Avoid reinitializing large arrays of alternatives" in the link above.
+            $.OR(
+                $.c1 ||
+                    ($.c1 = [
+                        { ALT: () => $.CONSUME(Num) },
+                        { ALT: () => $.CONSUME(Percentage) },
+                        { ALT: () => $.CONSUME(Length) },
+                        { ALT: () => $.CONSUME(Ems) },
+                        { ALT: () => $.CONSUME(Exs) },
+                        { ALT: () => $.CONSUME(Angle) },
+                        { ALT: () => $.CONSUME(Time) },
+                        { ALT: () => $.CONSUME(Freq) },
+                        { ALT: () => $.CONSUME(StringLiteral) },
+                        { ALT: () => $.CONSUME(Ident) },
+                        { ALT: () => $.CONSUME(Uri) },
+                        { ALT: () => $.SUBRULE($.hexcolor) },
+                        { ALT: () => $.SUBRULE($.cssFunction) }
+                    ])
+            )
         })
 
         // FUNCTION S* expr ')' S*
@@ -600,7 +646,7 @@ class LessParser extends Parser {
 const parser = new LessParser([])
 
 module.exports = {
-    parseCss: function(text) {
+    parseLess: function(text) {
         const lexResult = LessLexer.tokenize(text)
         // setting a new input will RESET the parser instance's state.
         parser.input = lexResult.tokens
