@@ -5,7 +5,8 @@
         "test": "mocha \"!(node_modules)/**/*spec.js\""
     },
     "dependencies": {
-        "chevrotain": "*"
+        "chevrotain": "*",
+        "less": "^3.0.4"
     },
     "devDependencies": {
         "acorn": "^5.1.1",
