@@ -256,19 +256,17 @@ class LessParser extends Parser {
         this.c10 = undefined
 
         this.RULE("stylesheet", () => {
-            // [ CHARSET_SYM STRING ';' ]?
-            $.OPTION(() => {
-                $.SUBRULE($.charsetHeader)
-            })
-
-            // [ import ]*
             $.MANY(() => {
-                $.SUBRULE($.cssImport)
-            })
-
-            // [ [ ruleset | media | page ] ]*
-            $.MANY2(() => {
-                $.SUBRULE($.contents)
+                $.OR(
+                    $.c3 ||
+                        ($.c3 = [
+                            { ALT: () => $.SUBRULE($.ruleset) },
+                            { ALT: () => $.SUBRULE($.media) },
+                            { ALT: () => $.SUBRULE($.charsetHeader) },
+                            { ALT: () => $.SUBRULE($.cssImport) },
+                            { ALT: () => $.SUBRULE($.page) }
+                        ])
+                )
             })
         })
 
@@ -276,17 +274,6 @@ class LessParser extends Parser {
             $.CONSUME(CharsetSym)
             $.CONSUME(StringLiteral)
             $.CONSUME(SemiColon)
-        })
-
-        this.RULE("contents", () => {
-            $.OR(
-                $.c3 ||
-                    ($.c3 = [
-                        { ALT: () => $.SUBRULE($.ruleset) },
-                        { ALT: () => $.SUBRULE($.media) },
-                        { ALT: () => $.SUBRULE($.page) }
-                    ])
-            )
         })
 
         // IMPORT_SYM S*
