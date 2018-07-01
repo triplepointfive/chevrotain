@@ -79,9 +79,6 @@ const Func = createToken({
     pattern: MAKE_PATTERN("{{ident}}\\(")
 })
 
-const Cdo = createToken({ name: "Cdo", pattern: "<!--" })
-// Cdc must be before Minus
-const Cdc = createToken({ name: "Cdc", pattern: "-->" })
 const Includes = createToken({ name: "Includes", pattern: "~=" })
 const Dasmatch = createToken({ name: "Dasmatch", pattern: "|=" })
 const Exclamation = createToken({ name: "Exclamation", pattern: "!" })
@@ -264,16 +261,12 @@ class LessParser extends Parser {
                 $.SUBRULE($.charsetHeader)
             })
 
-            // [S|CDO|CDC]*
-            $.SUBRULE($.cdcCdo)
-
-            // [ import [ CDO S* | CDC S* ]* ]*
+            // [ import ]*
             $.MANY(() => {
                 $.SUBRULE($.cssImport)
-                $.SUBRULE2($.cdcCdo)
             })
 
-            // [ [ ruleset | media | page ] [ CDO S* | CDC S* ]* ]*
+            // [ [ ruleset | media | page ] ]*
             $.MANY2(() => {
                 $.SUBRULE($.contents)
             })
@@ -294,17 +287,6 @@ class LessParser extends Parser {
                         { ALT: () => $.SUBRULE($.page) }
                     ])
             )
-            $.SUBRULE3($.cdcCdo)
-        })
-
-        // factor out repeating pattern for cdc/cdo
-        this.RULE("cdcCdo", () => {
-            $.MANY(() => {
-                $.OR([
-                    { ALT: () => $.CONSUME(Cdo) },
-                    { ALT: () => $.CONSUME(Cdc) }
-                ])
-            })
         })
 
         // IMPORT_SYM S*
