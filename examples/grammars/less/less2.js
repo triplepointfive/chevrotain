@@ -1,8 +1,9 @@
 const { Parser, Lexer, createToken } = require("chevrotain")
 
 
+const VariableCall = createToken({ name: "VariableCall", pattern: /@[\w-]+\(\s*\)/ })
 
-const allTokens = []
+const allTokens = [VariableCall]
 
 const LessLexer = new Lexer(allTokens)
 
@@ -43,6 +44,7 @@ class LessParser extends Parser {
         })
 
         $.RULE("variableCall", () => {
+            $.CONSUME(VariableCall)
         })
 
         $.RULE("entitiesCall", () => {
