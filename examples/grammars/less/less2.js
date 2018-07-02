@@ -1,8 +1,16 @@
 const { Parser, Lexer, createToken } = require("chevrotain")
 
+const VariableCall = createToken({
+    name: "VariableCall",
+    pattern: /@[\w-]+\(\s*\)/
+})
 
-const VariableCall = createToken({ name: "VariableCall", pattern: /@[\w-]+\(\s*\)/ })
+const AtExtend = createToken({ name: "AtExtend", pattern: "&:extend(" })
+const All = createToken({ name: "All", pattern: "all" })
+const RParen = createToken({ name: "RParen", pattern: ")" })
+const SemiColon = createToken({ name: "SemiColon", pattern: ";" })
 
+// TODO: fill this automatically
 const allTokens = [VariableCall]
 
 const LessLexer = new Lexer(allTokens)
@@ -29,32 +37,41 @@ class LessParser extends Parser {
         })
 
         $.RULE("extendRule", () => {
+            $.CONSUME(AtExtend)
+            $.MANY_SEP({
+                SEP: Comma,
+                DEF: () => {
+                    // TODO: a GATE is needed here because the following All
+                    // is also a valid element
+                    $.MANY(() => {
+                        $.SUBRULE($.element)
+                    })
+                    $.OPTION(() => {
+                        $.CONSUME(All)
+                    })
+                }
+            })
+            $.CONSUME(RParen)
+            $.CONSUME(SemiColon)
         })
 
-        $.RULE("mixinDefinition", () => {
-        })
+        $.RULE("mixinDefinition", () => {})
 
-        $.RULE("declaration", () => {
-        })
+        $.RULE("declaration", () => {})
 
-        $.RULE("ruleset", () => {
-        })
+        $.RULE("ruleset", () => {})
 
-        $.RULE("mixinCall", () => {
-        })
+        $.RULE("mixinCall", () => {})
 
         $.RULE("variableCall", () => {
             $.CONSUME(VariableCall)
         })
 
-        $.RULE("entitiesCall", () => {
-        })
+        $.RULE("entitiesCall", () => {})
 
-        $.RULE("atrule", () => {
-        })
+        $.RULE("atrule", () => {})
 
-
-
+        $.RULE("element", () => {})
 
 
         // very important to call this after all the rules have been defined.
