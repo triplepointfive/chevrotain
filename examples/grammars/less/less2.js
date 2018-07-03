@@ -6,9 +6,33 @@ const VariableCall = createToken({
 })
 
 const AtExtend = createToken({ name: "AtExtend", pattern: "&:extend(" })
+const Ampersand = createToken({ name: "Ampersand", pattern: "&:extend(" })
+const Star = createToken({ name: "Star", pattern: "*" })
 const All = createToken({ name: "All", pattern: "all" })
 const RParen = createToken({ name: "RParen", pattern: ")" })
 const SemiColon = createToken({ name: "SemiColon", pattern: ";" })
+const Percentage = createToken({
+    name: "Percentage",
+    pattern: /(?:\d+\.\d+|\d+)%/
+})
+
+// TODO: We may want to split up this regExp into distinct Token Types
+// This could provide better language services capabilities, e.g:
+// Different syntax highlights for specific literal types
+const LiteralElement = createToken({
+    name: "LiteralElement",
+    pattern: /(?:[.#]?|:*)(?:[\w-]|[^\x00-\x9f]|\\(?:[A-Fa-f0-9]{1,6} ?|[^A-Fa-f0-9]))+/
+})
+
+const FindName1 = createToken({
+    name: "FindName1",
+    pattern: /\([^&()@]+\)/
+})
+
+const FindName2 = createToken({
+    name: "FindName2",
+    pattern: /[\.#:](?=@)/
+})
 
 // TODO: fill this automatically
 const allTokens = [VariableCall]
@@ -71,8 +95,22 @@ class LessParser extends Parser {
 
         $.RULE("atrule", () => {})
 
-        $.RULE("element", () => {})
+        $.RULE("element", () => {
+            $.OR([
+                { ALT: () => $.CONSUME(Percentage) },
+                { ALT: () => $.CONSUME(LiteralElement) },
+                { ALT: () => $.CONSUME(Star) },
+                { ALT: () => $.CONSUME(Ampersand) },
+                { ALT: () => $.SUBRULE($.attribute) },
+                { ALT: () => $.CONSUME(FindName1) },
+                { ALT: () => $.CONSUME(FindName2) },
+                { ALT: () => $.SUBRULE($.variableCurly) }
+            ])
+        })
 
+        $.RULE("attribute", () => {})
+
+        $.RULE("variableCurly", () => {})
 
         // very important to call this after all the rules have been defined.
         // otherwise the parser may not work correctly as it will lack information
