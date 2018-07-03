@@ -24,13 +24,19 @@ const LiteralElement = createToken({
     pattern: /(?:[.#]?|:*)(?:[\w-]|[^\x00-\x9f]|\\(?:[A-Fa-f0-9]{1,6} ?|[^A-Fa-f0-9]))+/
 })
 
-const FindName1 = createToken({
-    name: "FindName1",
+// TODO: We may want to split up this regExp into distinct Token Types
+// TODO: ensure no Lexer ambiguities due to this very general Token
+const ParenthesisLiteral = createToken({
+    name: "ParenthesisLiteral",
     pattern: /\([^&()@]+\)/
 })
 
-const FindName2 = createToken({
-    name: "FindName2",
+// TODO: review name
+// TODO: We may want to split up this regExp into distinct Token Types
+// TODO: ensure no Lexer ambiguities due to this somewhat general Token.
+// TODO: Does the lookahead resolve such ambiguities?
+const ElementClassifier = createToken({
+    name: "ElementClassifier",
     pattern: /[\.#:](?=@)/
 })
 
@@ -105,8 +111,8 @@ class LessParser extends Parser {
                 { ALT: () => $.CONSUME(Star) },
                 { ALT: () => $.CONSUME(Ampersand) },
                 { ALT: () => $.SUBRULE($.attribute) },
-                { ALT: () => $.CONSUME(FindName1) },
-                { ALT: () => $.CONSUME(FindName2) },
+                { ALT: () => $.CONSUME(ParenthesisLiteral) },
+                { ALT: () => $.CONSUME(ElementClassifier) },
                 { ALT: () => $.SUBRULE($.variableCurly) }
             ])
         })
