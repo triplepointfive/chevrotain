@@ -1,3 +1,9 @@
+/**
+ * references:
+ * https://github.com/antlr/grammars-v4/blob/master/css3/css3.g4
+ * https://www.lifewire.com/css2-vs-css3-3466978
+ */
+
 const { Parser, Lexer, createToken } = require("chevrotain")
 
 const VariableCall = createToken({
@@ -8,6 +14,17 @@ const VariableCall = createToken({
 const AtExtend = createToken({ name: "AtExtend", pattern: "&:extend(" })
 const Ampersand = createToken({ name: "Ampersand", pattern: "&:extend(" })
 const Star = createToken({ name: "Star", pattern: "*" })
+const Equals = createToken({ name: "Equals", pattern: "=" })
+const Includes = createToken({ name: "Includes", pattern: "~=" })
+const Dasmatch = createToken({ name: "Dasmatch", pattern: "|=" })
+const BeginMatchExactly = createToken({ name: "BeginMatchExactly", pattern: "^=" })
+const EndMatchExactly = createToken({ name: "EndMatchExactly", pattern: "$=" })
+const ContainsMatch = createToken({ name: "ContainsMatch", pattern: "*=" })
+// TODO: misaligned with CSS: No escapes and non asci identifiers, intentional
+const Ident = createToken({ name: "Ident", pattern: /-?[_a-zA-Z][_a-zA-Z0-9-]*/ })
+
+
+// TODO: keywords vs identifiers
 const All = createToken({ name: "All", pattern: "all" })
 const RParen = createToken({ name: "RParen", pattern: ")" })
 const SemiColon = createToken({ name: "SemiColon", pattern: ";" })
@@ -15,6 +32,8 @@ const Percentage = createToken({
     name: "Percentage",
     pattern: /(?:\d+\.\d+|\d+)%/
 })
+const LSquare = createToken({ name: "LSquare", pattern: "[" })
+const RSquare = createToken({ name: "RSquare", pattern: "]" })
 
 // TODO: We may want to split up this regExp into distinct Token Types
 // This could provide better language services capabilities, e.g:
@@ -117,7 +136,32 @@ class LessParser extends Parser {
             ])
         })
 
-        $.RULE("attribute", () => {})
+        // TODO: misaligned with CSS: Missing case insensitive attribute flag
+        // https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors
+        $.RULE("attribute", () => {
+            $.CONSUME(LSquare)
+            $.CONSUME(Ident)
+
+            this.OPTION(() => {
+                $.OR([
+                    { ALT: () => $.CONSUME(Equals) },
+                    { ALT: () => $.CONSUME(Includes) },
+                    { ALT: () => $.CONSUME(Dasmatch) },
+                    { ALT: () => $.CONSUME(BeginMatchExactly) },
+                    { ALT: () => $.CONSUME(EndMatchExactly) },
+                    { ALT: () => $.CONSUME(ContainsMatch) }
+                ])
+
+                // REVIEW: misaligned with LESS: LESS allowed % number here, but
+                // that is not valid CSS
+                $.OR2([
+                    { ALT: () => $.CONSUME2(Ident) },
+                    // TODO: align with CSS StringLiteral?
+                    { ALT: () => $.CONSUME(StringLiteral) }
+                ])
+            })
+            $.CONSUME(RSquare)
+        })
 
         $.RULE("variableCurly", () => {})
 
