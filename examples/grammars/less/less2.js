@@ -47,7 +47,7 @@ class LessParser extends Parser {
 
         const $ = this
 
-        $.RULE("json", () => {
+        $.RULE("primary", () => {
             $.OR([
                 { ALT: () => $.SUBRULE($.extendRule) },
                 { ALT: () => $.SUBRULE($.mixinDefinition) },
@@ -60,6 +60,9 @@ class LessParser extends Parser {
             ])
         })
 
+        // The original extend had two variants "extend" and "extendRule"
+        // implemented in the same function, we will have two separate functions
+        // for readability and clarity.
         $.RULE("extendRule", () => {
             $.CONSUME(AtExtend)
             $.MANY_SEP({

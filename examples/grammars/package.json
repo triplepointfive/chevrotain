@@ -6,7 +6,7 @@
     },
     "dependencies": {
         "chevrotain": "*",
-        "less": "^3.0.4"
+        "less": "3.5.0-beta.6"
     },
     "devDependencies": {
         "acorn": "^5.1.1",
