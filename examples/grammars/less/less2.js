@@ -4,25 +4,72 @@
  * https://www.lifewire.com/css2-vs-css3-3466978
  */
 
-const { Parser, Lexer, createToken } = require("chevrotain")
+const { Parser, Lexer, createToken: orgCreateToken } = require("chevrotain")
+const XRegExp = require("xregexp")
 
+FRAGMENT("h", "[0-9a-f]")
+FRAGMENT("unicode", "{{h}}{1,6}")
+FRAGMENT("escape", "{{unicode}}|\\\\[^\\r\\n\\f0-9a-f]")
+FRAGMENT("nl", "\\n|\\r|\\f")
+FRAGMENT("string1", '\\"([^\\n\\r\\f\\"]|{{nl}}|{{escape}})*\\"')
+FRAGMENT("string2", "\\'([^\\n\\r\\f\\']|{{nl}}|{{escape}})*\\'")
+
+function FRAGMENT(name, def) {
+    fragments[name] = XRegExp.build(def, fragments)
+}
+
+function MAKE_PATTERN(def, flags) {
+    return XRegExp.build(def, fragments, flags)
+}
+
+// A Little wrapper to save us the trouble of manually building the
+// array of cssTokens
+const lessTokens = []
+const createToken = function() {
+    const newToken = orgCreateToken.apply(null, arguments)
+    lessTokens.push(newToken)
+    return newToken
+}
+
+const Whitespace = createToken({
+    name: "Whitespace",
+    pattern: MAKE_PATTERN("{{spaces}}"),
+    // The W3C specs are are defined in a whitespace sensitive manner.
+    // But there is only **one** place where the grammar is truly whitespace sensitive.
+    // So the whitespace sensitivity was implemented via a GATE in the selector rule.
+    group: Lexer.SKIPPED
+})
+
+const Comment = createToken({
+    name: "Comment",
+    pattern: /\/\*[^*]*\*+([^/*][^*]*\*+})*\//,
+    group: Lexer.SKIPPED
+})
 const VariableCall = createToken({
     name: "VariableCall",
     pattern: /@[\w-]+\(\s*\)/
 })
-
+const StringLiteral = createToken({
+    name: "StringLiteral",
+    pattern: MAKE_PATTERN("{{string1}}|{{string2}}")
+})
 const AtExtend = createToken({ name: "AtExtend", pattern: "&:extend(" })
 const Ampersand = createToken({ name: "Ampersand", pattern: "&:extend(" })
 const Star = createToken({ name: "Star", pattern: "*" })
 const Equals = createToken({ name: "Equals", pattern: "=" })
 const Includes = createToken({ name: "Includes", pattern: "~=" })
 const Dasmatch = createToken({ name: "Dasmatch", pattern: "|=" })
-const BeginMatchExactly = createToken({ name: "BeginMatchExactly", pattern: "^=" })
+const BeginMatchExactly = createToken({
+    name: "BeginMatchExactly",
+    pattern: "^="
+})
 const EndMatchExactly = createToken({ name: "EndMatchExactly", pattern: "$=" })
 const ContainsMatch = createToken({ name: "ContainsMatch", pattern: "*=" })
 // TODO: misaligned with CSS: No escapes and non asci identifiers, intentional
-const Ident = createToken({ name: "Ident", pattern: /-?[_a-zA-Z][_a-zA-Z0-9-]*/ })
-
+const Ident = createToken({
+    name: "Ident",
+    pattern: /-?[_a-zA-Z][_a-zA-Z0-9-]*/
+})
 
 // TODO: keywords vs identifiers
 const All = createToken({ name: "All", pattern: "all" })
@@ -59,10 +106,7 @@ const ElementClassifier = createToken({
     pattern: /[\.#:](?=@)/
 })
 
-// TODO: fill this automatically
-const allTokens = [VariableCall]
-
-const LessLexer = new Lexer(allTokens)
+const LessLexer = new Lexer(lessTokens)
 
 // ----------------- parser -----------------
 
@@ -156,7 +200,6 @@ class LessParser extends Parser {
                 // that is not valid CSS
                 $.OR2([
                     { ALT: () => $.CONSUME2(Ident) },
-                    // TODO: align with CSS StringLiteral?
                     { ALT: () => $.CONSUME(StringLiteral) }
                 ])
             })
