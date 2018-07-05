@@ -99,6 +99,7 @@ const RSquare = createToken({ name: "RSquare", pattern: "]" })
 
 const Plus = createToken({ name: "Plus", pattern: "+" })
 const GreaterThan = createToken({ name: "GreaterThan", pattern: ">" })
+const Tilde = createToken({ name: "Tilde", pattern: "~" })
 const Hash = createToken({
     name: "Hash",
     pattern: MAKE_PATTERN("#{{name}}")
@@ -249,11 +250,11 @@ class LessParser extends Parser {
             ])
         })
 
-        // TODO: add new CSS 3 combinator syntax
         this.RULE("combinator", () => {
             $.OR([
                 { ALT: () => $.CONSUME(Plus) },
-                { ALT: () => $.CONSUME(GreaterThan) }
+                { ALT: () => $.CONSUME(GreaterThan) },
+                { ALT: () => $.CONSUME(Tilde) }
             ])
         })
 
