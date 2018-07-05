@@ -7,16 +7,23 @@
 const { Parser, Lexer, createToken: orgCreateToken } = require("chevrotain")
 const XRegExp = require("xregexp")
 
+const fragments = {}
+function FRAGMENT(name, def) {
+    fragments[name] = XRegExp.build(def, fragments)
+}
+
+FRAGMENT("spaces", "[ \\t\\r\\n\\f]+")
 FRAGMENT("h", "[0-9a-f]")
 FRAGMENT("unicode", "{{h}}{1,6}")
 FRAGMENT("escape", "{{unicode}}|\\\\[^\\r\\n\\f0-9a-f]")
 FRAGMENT("nl", "\\n|\\r|\\f")
 FRAGMENT("string1", '\\"([^\\n\\r\\f\\"]|{{nl}}|{{escape}})*\\"')
 FRAGMENT("string2", "\\'([^\\n\\r\\f\\']|{{nl}}|{{escape}})*\\'")
-
-function FRAGMENT(name, def) {
-    fragments[name] = XRegExp.build(def, fragments)
-}
+FRAGMENT("nonascii", "[\\u0240-\\uffff]")
+FRAGMENT("nmstart", "[_a-zA-Z]|{{nonascii}}|{{escape}}")
+FRAGMENT("nmchar", "[_a-zA-Z0-9-]|{{nonascii}}|{{escape}}")
+FRAGMENT("name", "({{nmchar}})+")
+FRAGMENT("ident", "-?{{nmstart}}{{nmchar}}*")
 
 function MAKE_PATTERN(def, flags) {
     return XRegExp.build(def, fragments, flags)
@@ -53,8 +60,9 @@ const StringLiteral = createToken({
     name: "StringLiteral",
     pattern: MAKE_PATTERN("{{string1}}|{{string2}}")
 })
+// TODO: not sure this token is needed
+const Ampersand = createToken({ name: "Ampersand", pattern: "&" })
 const AtExtend = createToken({ name: "AtExtend", pattern: "&:extend(" })
-const Ampersand = createToken({ name: "Ampersand", pattern: "&:extend(" })
 const Star = createToken({ name: "Star", pattern: "*" })
 const Equals = createToken({ name: "Equals", pattern: "=" })
 const Includes = createToken({ name: "Includes", pattern: "~=" })
@@ -65,14 +73,21 @@ const BeginMatchExactly = createToken({
 })
 const EndMatchExactly = createToken({ name: "EndMatchExactly", pattern: "$=" })
 const ContainsMatch = createToken({ name: "ContainsMatch", pattern: "*=" })
-// TODO: misaligned with CSS: No escapes and non asci identifiers, intentional
+
+// must must appear before Ident due to common prefix
+const Func = createToken({
+    name: "Func",
+    pattern: MAKE_PATTERN("{{ident}}\\(")
+})
+
+// Ident must be before Minus
 const Ident = createToken({
     name: "Ident",
-    pattern: /-?[_a-zA-Z][_a-zA-Z0-9-]*/
+    pattern: MAKE_PATTERN("{{ident}}")
 })
 
 // TODO: keywords vs identifiers
-const All = createToken({ name: "All", pattern: "all" })
+// const All = createToken({ name: "All", pattern: "all" })
 const RParen = createToken({ name: "RParen", pattern: ")" })
 const SemiColon = createToken({ name: "SemiColon", pattern: ";" })
 const Percentage = createToken({
@@ -82,50 +97,40 @@ const Percentage = createToken({
 const LSquare = createToken({ name: "LSquare", pattern: "[" })
 const RSquare = createToken({ name: "RSquare", pattern: "]" })
 
-// TODO: We may want to split up this regExp into distinct Token Types
-// This could provide better language services capabilities, e.g:
-// Different syntax highlights for specific literal types
-const LiteralElement = createToken({
-    name: "LiteralElement",
-    pattern: /(?:[.#]?|:*)(?:[\w-]|[^\x00-\x9f]|\\(?:[A-Fa-f0-9]{1,6} ?|[^A-Fa-f0-9]))+/
+const Plus = createToken({ name: "Plus", pattern: "+" })
+const GreaterThan = createToken({ name: "GreaterThan", pattern: ">" })
+const Hash = createToken({
+    name: "Hash",
+    pattern: MAKE_PATTERN("#{{name}}")
 })
-
-// TODO: We may want to split up this regExp into distinct Token Types
-// TODO: ensure no Lexer ambiguities due to this very general Token
-const ParenthesisLiteral = createToken({
-    name: "ParenthesisLiteral",
-    pattern: /\([^&()@]+\)/
-})
-
-// TODO: review name
-// TODO: We may want to split up this regExp into distinct Token Types
-// TODO: ensure no Lexer ambiguities due to this somewhat general Token.
-// TODO: Does the lookahead resolve such ambiguities?
-const ElementClassifier = createToken({
-    name: "ElementClassifier",
-    pattern: /[\.#:](?=@)/
-})
+const Dot = createToken({ name: "Dot", pattern: "." })
+const Comma = createToken({ name: "Comma", pattern: "," })
+const Colon = createToken({ name: "Colon", pattern: ":" })
 
 const LessLexer = new Lexer(lessTokens)
 
 // ----------------- parser -----------------
 
 class LessParser extends Parser {
-    constructor(input, config) {
-        super(input, allTokens, config)
+    constructor(input) {
+        super(input, lessTokens, {
+            ignoredIssues: {
+                selector: { OR: true }
+            }
+        })
 
         const $ = this
 
         $.RULE("primary", () => {
             $.OR([
-                { ALT: () => $.SUBRULE($.extendRule) },
-                { ALT: () => $.SUBRULE($.mixinDefinition) },
-                { ALT: () => $.SUBRULE($.declaration) },
-                { ALT: () => $.SUBRULE($.ruleset) },
-                { ALT: () => $.SUBRULE($.mixinCall) },
-                { ALT: () => $.SUBRULE($.variableCall) },
-                { ALT: () => $.SUBRULE($.entitiesCall) },
-                { ALT: () => $.SUBRULE($.atrule) }
+                { ALT: () => $.SUBRULE($.extendRule) }
+                // { ALT: () => $.SUBRULE($.mixinDefinition) },
+                // { ALT: () => $.SUBRULE($.declaration) },
+                // { ALT: () => $.SUBRULE($.ruleset) },
+                // { ALT: () => $.SUBRULE($.mixinCall) },
+                // { ALT: () => $.SUBRULE($.variableCall) },
+                // { ALT: () => $.SUBRULE($.entitiesCall) },
+                // { ALT: () => $.SUBRULE($.atrule) }
             ])
         })
 
@@ -138,13 +143,13 @@ class LessParser extends Parser {
                 SEP: Comma,
                 DEF: () => {
                     // TODO: a GATE is needed here because the following All
-                    // is also a valid element
-                    $.MANY(() => {
-                        $.SUBRULE($.element)
-                    })
-                    $.OPTION(() => {
-                        $.CONSUME(All)
-                    })
+                    $.SUBRULE($.selector)
+
+                    // TODO: this probably has to be post processed
+                    // because "ALL" may be a normal ending part of a selector
+                    // $.OPTION(() => {
+                    //     $.CONSUME(All)
+                    // })
                 }
             })
             $.CONSUME(RParen)
@@ -167,22 +172,9 @@ class LessParser extends Parser {
 
         $.RULE("atrule", () => {})
 
-        $.RULE("element", () => {
-            $.OR([
-                { ALT: () => $.CONSUME(Percentage) },
-                { ALT: () => $.CONSUME(LiteralElement) },
-                { ALT: () => $.CONSUME(Star) },
-                { ALT: () => $.CONSUME(Ampersand) },
-                { ALT: () => $.SUBRULE($.attribute) },
-                { ALT: () => $.CONSUME(ParenthesisLiteral) },
-                { ALT: () => $.CONSUME(ElementClassifier) },
-                { ALT: () => $.SUBRULE($.variableCurly) }
-            ])
-        })
-
         // TODO: misaligned with CSS: Missing case insensitive attribute flag
         // https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors
-        $.RULE("attribute", () => {
+        $.RULE("attrib", () => {
             $.CONSUME(LSquare)
             $.CONSUME(Ident)
 
@@ -208,6 +200,104 @@ class LessParser extends Parser {
 
         $.RULE("variableCurly", () => {})
 
+        $.RULE("selector", () => {
+            $.SUBRULE($.simple_selector)
+            $.OPTION(() => {
+                $.OR([
+                    {
+                        GATE: () => {
+                            const prevToken = $.LA(0)
+                            const nextToken = $.LA(1)
+                            //  This is the only place in CSS where the grammar is whitespace sensitive.
+                            return nextToken.startOffset > prevToken.endOffset
+                        },
+                        ALT: () => {
+                            $.OPTION2(() => {
+                                $.SUBRULE($.combinator)
+                            })
+                            $.SUBRULE($.selector)
+                        }
+                    },
+                    {
+                        ALT: () => {
+                            $.SUBRULE2($.combinator)
+                            $.SUBRULE2($.selector)
+                        }
+                    }
+                ])
+            })
+        })
+
+        this.RULE("simple_selector", () => {
+            $.OR([
+                {
+                    ALT: () => {
+                        $.SUBRULE($.element_name)
+                        $.MANY(() => {
+                            $.SUBRULE($.simple_selector_suffix)
+                        })
+                    }
+                },
+                {
+                    ALT: () => {
+                        $.AT_LEAST_ONE(() => {
+                            $.SUBRULE2($.simple_selector_suffix)
+                        })
+                    }
+                }
+            ])
+        })
+
+        // TODO: add new CSS 3 combinator syntax
+        this.RULE("combinator", () => {
+            $.OR([
+                { ALT: () => $.CONSUME(Plus) },
+                { ALT: () => $.CONSUME(GreaterThan) }
+            ])
+        })
+
+        // helper grammar rule to avoid repetition
+        // [ HASH | class | attrib | pseudo ]+
+        $.RULE("simple_selector_suffix", () => {
+            $.OR([
+                { ALT: () => $.CONSUME(Hash) },
+                { ALT: () => $.SUBRULE($.class) },
+                { ALT: () => $.SUBRULE($.attrib) },
+                { ALT: () => $.SUBRULE($.pseudo) }
+            ])
+        })
+
+        // '.' IDENT
+        $.RULE("class", () => {
+            $.CONSUME(Dot)
+            $.CONSUME(Ident)
+        })
+
+        // IDENT | '*'
+        $.RULE("element_name", () => {
+            $.OR([
+                { ALT: () => $.CONSUME(Ident) },
+                { ALT: () => $.CONSUME(Star) }
+            ])
+        })
+
+        // ':' [ IDENT | FUNCTION S* [IDENT S*]? ')' ]
+        $.RULE("pseudo", () => {
+            $.CONSUME(Colon)
+
+            $.OR([
+                { ALT: () => $.CONSUME(Ident) },
+                {
+                    ALT: () => {
+                        $.CONSUME(Func)
+                        $.OPTION(() => {
+                            $.CONSUME2(Ident)
+                        })
+                        $.CONSUME(RParen)
+                    }
+                }
+            ])
+        })
         // very important to call this after all the rules have been defined.
         // otherwise the parser may not work correctly as it will lack information
         // derived during the self analysis phase.
