@@ -61,7 +61,7 @@ const StringLiteral = createToken({
     pattern: MAKE_PATTERN("{{string1}}|{{string2}}")
 })
 // TODO: not sure this token is needed
-const Ampersand = createToken({ name: "Ampersand", pattern: "&" })
+// const Ampersand = createToken({ name: "Ampersand", pattern: "&" })
 const AtExtend = createToken({ name: "AtExtend", pattern: "&:extend(" })
 const Star = createToken({ name: "Star", pattern: "*" })
 const Equals = createToken({ name: "Equals", pattern: "=" })
@@ -228,6 +228,7 @@ class LessParser extends Parser {
             })
         })
 
+        // TODO: 'variableCurly' can appear here?
         this.RULE("simple_selector", () => {
             $.OR([
                 {
@@ -318,7 +319,7 @@ module.exports = {
         // setting a new input will RESET the parser instance's state.
         parser.input = lexResult.tokens
         // any top level rule may be used as an entry point
-        const value = parser.json()
+        const value = parser.primary()
 
         return {
             // This is a pure grammar, the value will be undefined until we add embedded actions
