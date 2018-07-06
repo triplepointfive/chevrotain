@@ -4,7 +4,12 @@
  * https://www.lifewire.com/css2-vs-css3-3466978
  */
 
-const { Parser, Lexer, createToken: orgCreateToken } = require("chevrotain")
+const {
+    Parser,
+    Lexer,
+    createToken: orgCreateToken,
+    EMPTY_ALT
+} = require("chevrotain")
 const XRegExp = require("xregexp")
 
 const fragments = {}
@@ -53,14 +58,19 @@ const Comment = createToken({
     group: Lexer.SKIPPED
 })
 
-const PropertyVariable = createToken({
-    name: "PropertyVariable",
-    pattern: /\$[\w-]+\(\s*\)/
-})
-
 const VariableCall = createToken({
     name: "VariableCall",
     pattern: /@[\w-]+\(\s*\)/
+})
+
+const PropertyVariable = createToken({
+    name: "PropertyVariable",
+    pattern: /\$[\w-]+/
+})
+
+const NestedPropertyVariable = createToken({
+    name: "NestedPropertyVariable",
+    pattern: /\$@[\w-]+/
 })
 
 // must be after VariableCall
@@ -372,7 +382,9 @@ class LessParser extends Parser {
                 { ALT: () => $.CONSUME(Ident) },
                 { ALT: () => $.CONSUME(VariableName) },
                 { ALT: () => $.CONSUME(NestedVariableName) },
-                { ALT: () => $.CONSUME(PropertyVariable) }
+                { ALT: () => $.CONSUME(PropertyVariable) },
+                { ALT: () => $.CONSUME(NestedPropertyVariable) },
+                { ALT: () => EMPTY_ALT }
             ])
         })
 
