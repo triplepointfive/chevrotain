@@ -53,6 +53,11 @@ const Comment = createToken({
     group: Lexer.SKIPPED
 })
 
+const PropertyVariable = createToken({
+    name: "PropertyVariable",
+    pattern: /\$[\w-]+\(\s*\)/
+})
+
 const VariableCall = createToken({
     name: "VariableCall",
     pattern: /@[\w-]+\(\s*\)/
@@ -366,8 +371,8 @@ class LessParser extends Parser {
             $.OR([
                 { ALT: () => $.CONSUME(Ident) },
                 { ALT: () => $.CONSUME(VariableName) },
-                { ALT: () => $.CONSUME(NestedVariableName) }
-                // TODO what does $ signify? what variations are allowed?
+                { ALT: () => $.CONSUME(NestedVariableName) },
+                { ALT: () => $.CONSUME(PropertyVariable) }
             ])
         })
 
