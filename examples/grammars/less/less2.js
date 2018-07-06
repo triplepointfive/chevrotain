@@ -52,10 +52,23 @@ const Comment = createToken({
     pattern: /\/\*[^*]*\*+([^/*][^*]*\*+})*\//,
     group: Lexer.SKIPPED
 })
+
 const VariableCall = createToken({
     name: "VariableCall",
     pattern: /@[\w-]+\(\s*\)/
 })
+
+// must be after VariableCall
+const VariableName = createToken({
+    name: "VariableName",
+    pattern: /@[\w-]+/
+})
+
+const NestedVariableName = createToken({
+    name: "NestedVariableName",
+    pattern: /@@[\w-]+/
+})
+
 const StringLiteral = createToken({
     name: "StringLiteral",
     pattern: MAKE_PATTERN("{{string1}}|{{string2}}")
@@ -73,6 +86,12 @@ const BeginMatchExactly = createToken({
 })
 const EndMatchExactly = createToken({ name: "EndMatchExactly", pattern: "$=" })
 const ContainsMatch = createToken({ name: "ContainsMatch", pattern: "*=" })
+
+// TODO: longer alt
+const ImportantSym = createToken({
+    name: "ImportantSym",
+    pattern: /important/i
+})
 
 // must must appear before Ident due to common prefix
 const Func = createToken({
@@ -110,6 +129,8 @@ const Colon = createToken({ name: "Colon", pattern: ":" })
 const LCurly = createToken({ name: "LCurly", pattern: "{" })
 const RCurly = createToken({ name: "RCurly", pattern: "}" })
 
+const Not = createToken({ name: "Not", pattern: "!" })
+
 const LessLexer = new Lexer(lessTokens)
 
 // ----------------- parser -----------------
@@ -128,11 +149,11 @@ class LessParser extends Parser {
             $.MANY(() => {
                 $.OR([
                     { ALT: () => $.SUBRULE($.extendRule) },
-                    { ALT: () => $.SUBRULE($.ruleset) }
+                    { ALT: () => $.SUBRULE($.ruleset) },
+                    { ALT: () => $.SUBRULE($.variableCall) }
                     // { ALT: () => $.SUBRULE($.mixinDefinition) },
                     // { ALT: () => $.SUBRULE($.declaration) },
                     // { ALT: () => $.SUBRULE($.mixinCall) },
-                    // { ALT: () => $.SUBRULE($.variableCall) },
                     // { ALT: () => $.SUBRULE($.entitiesCall) },
                     // { ALT: () => $.SUBRULE($.atrule) }
                 ])
@@ -179,7 +200,19 @@ class LessParser extends Parser {
         $.RULE("mixinCall", () => {})
 
         $.RULE("variableCall", () => {
-            $.CONSUME(VariableCall)
+            $.OR([
+                { ALT: () => $.CONSUME(VariableCall) },
+                { ALT: () => $.CONSUME(VariableName) }
+            ])
+
+            $.OPTION(() => {
+                $.SUBRULE($.mixinRuleLookup)
+            })
+
+            $.OPTION2(() => {
+                $.CONSUME(Not)
+                $.CONSUME(ImportantSym)
+            })
         })
 
         $.RULE("entitiesCall", () => {})
@@ -316,10 +349,28 @@ class LessParser extends Parser {
 
         $.RULE("block", () => {
             $.CONSUME(LCurly)
-            // TODO: does primary include the repetition?
             $.SUBRULE($.primary)
             $.CONSUME(RCurly)
         })
+
+        $.RULE("mixinRuleLookup", () => {
+            $.CONSUME(LSquare)
+            $.AT_LEAST_ONE(() => {
+                $.SUBRULE($.lookupValue)
+            })
+
+            $.CONSUME(RSquare)
+        })
+
+        $.RULE("lookupValue", () => {
+            $.OR([
+                { ALT: () => $.CONSUME(Ident) },
+                { ALT: () => $.CONSUME(VariableName) },
+                { ALT: () => $.CONSUME(NestedVariableName) }
+                // TODO what does $ signify? what variations are allowed?
+            ])
+        })
+
         // very important to call this after all the rules have been defined.
         // otherwise the parser may not work correctly as it will lack information
         // derived during the self analysis phase.
