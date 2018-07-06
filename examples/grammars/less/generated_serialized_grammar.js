@@ -791,7 +791,7 @@ const serializedGrammar = [
         type: "Rule",
         name: "lookupValue",
         orgText:
-            "() => {\n            $.OR([\n                { ALT: () => $.CONSUME(Ident) },\n                { ALT: () => $.CONSUME(VariableName) },\n                { ALT: () => $.CONSUME(NestedVariableName) },\n                { ALT: () => $.CONSUME(PropertyVariable) }\n            ])\n        }",
+            "() => {\n            $.OR([\n                { ALT: () => $.CONSUME(Ident) },\n                { ALT: () => $.CONSUME(VariableName) },\n                { ALT: () => $.CONSUME(NestedVariableName) },\n                { ALT: () => $.CONSUME(PropertyVariable) },\n                { ALT: () => $.CONSUME(NestedPropertyVariable) },\n                { ALT: () => EMPTY_ALT }\n            ])\n        }",
         definition: [
             {
                 type: "Alternation",
@@ -842,9 +842,25 @@ const serializedGrammar = [
                                 name: "PropertyVariable",
                                 label: "PropertyVariable",
                                 idx: 0,
-                                pattern: "\\$[\\w-]+\\(\\s*\\)"
+                                pattern: "\\$[\\w-]+"
                             }
                         ]
+                    },
+                    {
+                        type: "Flat",
+                        definition: [
+                            {
+                                type: "Terminal",
+                                name: "NestedPropertyVariable",
+                                label: "NestedPropertyVariable",
+                                idx: 0,
+                                pattern: "\\$@[\\w-]+"
+                            }
+                        ]
+                    },
+                    {
+                        type: "Flat",
+                        definition: []
                     }
                 ]
             }
