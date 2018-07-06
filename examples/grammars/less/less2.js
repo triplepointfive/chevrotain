@@ -107,6 +107,8 @@ const Hash = createToken({
 const Dot = createToken({ name: "Dot", pattern: "." })
 const Comma = createToken({ name: "Comma", pattern: "," })
 const Colon = createToken({ name: "Colon", pattern: ":" })
+const LCurly = createToken({ name: "LCurly", pattern: "{" })
+const RCurly = createToken({ name: "RCurly", pattern: "}" })
 
 const LessLexer = new Lexer(lessTokens)
 
@@ -123,16 +125,18 @@ class LessParser extends Parser {
         const $ = this
 
         $.RULE("primary", () => {
-            $.OR([
-                { ALT: () => $.SUBRULE($.extendRule) }
-                // { ALT: () => $.SUBRULE($.mixinDefinition) },
-                // { ALT: () => $.SUBRULE($.declaration) },
-                // { ALT: () => $.SUBRULE($.ruleset) },
-                // { ALT: () => $.SUBRULE($.mixinCall) },
-                // { ALT: () => $.SUBRULE($.variableCall) },
-                // { ALT: () => $.SUBRULE($.entitiesCall) },
-                // { ALT: () => $.SUBRULE($.atrule) }
-            ])
+            $.MANY(() => {
+                $.OR([
+                    { ALT: () => $.SUBRULE($.extendRule) },
+                    { ALT: () => $.SUBRULE($.ruleset) }
+                    // { ALT: () => $.SUBRULE($.mixinDefinition) },
+                    // { ALT: () => $.SUBRULE($.declaration) },
+                    // { ALT: () => $.SUBRULE($.mixinCall) },
+                    // { ALT: () => $.SUBRULE($.variableCall) },
+                    // { ALT: () => $.SUBRULE($.entitiesCall) },
+                    // { ALT: () => $.SUBRULE($.atrule) }
+                ])
+            })
         })
 
         // The original extend had two variants "extend" and "extendRule"
@@ -161,7 +165,16 @@ class LessParser extends Parser {
 
         $.RULE("declaration", () => {})
 
-        $.RULE("ruleset", () => {})
+        $.RULE("ruleset", () => {
+            $.MANY_SEP({
+                SEP: Comma,
+                DEF: () => {
+                    $.SUBRULE($.selector)
+                }
+            })
+
+            $.SUBRULE($.block)
+        })
 
         $.RULE("mixinCall", () => {})
 
@@ -299,6 +312,13 @@ class LessParser extends Parser {
                     }
                 }
             ])
+        })
+
+        $.RULE("block", () => {
+            $.CONSUME(LCurly)
+            // TODO: does primary include the repetition?
+            $.SUBRULE($.primary)
+            $.CONSUME(RCurly)
         })
         // very important to call this after all the rules have been defined.
         // otherwise the parser may not work correctly as it will lack information

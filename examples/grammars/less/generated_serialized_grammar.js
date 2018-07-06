@@ -3,19 +3,35 @@ const serializedGrammar = [
 	{
 		"type": "Rule",
 		"name": "primary",
-		"orgText": "() => {\n            $.OR([\n                { ALT: () => $.SUBRULE($.extendRule) }\n                // { ALT: () => $.SUBRULE($.mixinDefinition) },\n                // { ALT: () => $.SUBRULE($.declaration) },\n                // { ALT: () => $.SUBRULE($.ruleset) },\n                // { ALT: () => $.SUBRULE($.mixinCall) },\n                // { ALT: () => $.SUBRULE($.variableCall) },\n                // { ALT: () => $.SUBRULE($.entitiesCall) },\n                // { ALT: () => $.SUBRULE($.atrule) }\n            ])\n        }",
+		"orgText": "() => {\n            $.MANY(() => {\n                $.OR([\n                    { ALT: () => $.SUBRULE($.extendRule) },\n                    { ALT: () => $.SUBRULE($.ruleset) }\n                    // { ALT: () => $.SUBRULE($.mixinDefinition) },\n                    // { ALT: () => $.SUBRULE($.declaration) },\n                    // { ALT: () => $.SUBRULE($.mixinCall) },\n                    // { ALT: () => $.SUBRULE($.variableCall) },\n                    // { ALT: () => $.SUBRULE($.entitiesCall) },\n                    // { ALT: () => $.SUBRULE($.atrule) }\n                ])\n            })\n        }",
 		"definition": [
 			{
-				"type": "Alternation",
+				"type": "Repetition",
 				"idx": 0,
 				"definition": [
 					{
-						"type": "Flat",
+						"type": "Alternation",
+						"idx": 0,
 						"definition": [
 							{
-								"type": "NonTerminal",
-								"name": "extendRule",
-								"idx": 0
+								"type": "Flat",
+								"definition": [
+									{
+										"type": "NonTerminal",
+										"name": "extendRule",
+										"idx": 0
+									}
+								]
+							},
+							{
+								"type": "Flat",
+								"definition": [
+									{
+										"type": "NonTerminal",
+										"name": "ruleset",
+										"idx": 0
+									}
+								]
 							}
 						]
 					}
@@ -84,8 +100,32 @@ const serializedGrammar = [
 	{
 		"type": "Rule",
 		"name": "ruleset",
-		"orgText": "() => {}",
-		"definition": []
+		"orgText": "() => {\n            $.MANY_SEP({\n                SEP: Comma,\n                DEF: () => {\n                    $.SUBRULE($.selector)\n                }\n            })\n\n            $.SUBRULE($.block)\n        }",
+		"definition": [
+			{
+				"type": "RepetitionWithSeparator",
+				"idx": 0,
+				"separator": {
+					"type": "Terminal",
+					"name": "Comma",
+					"label": "Comma",
+					"idx": 1,
+					"pattern": ","
+				},
+				"definition": [
+					{
+						"type": "NonTerminal",
+						"name": "selector",
+						"idx": 0
+					}
+				]
+			},
+			{
+				"type": "NonTerminal",
+				"name": "block",
+				"idx": 0
+			}
+		]
 	},
 	{
 		"type": "Rule",
@@ -600,6 +640,32 @@ const serializedGrammar = [
 						]
 					}
 				]
+			}
+		]
+	},
+	{
+		"type": "Rule",
+		"name": "block",
+		"orgText": "() => {\n            $.CONSUME(LCurly)\n            // TODO: does primary include the repetition?\n            $.SUBRULE($.primary)\n            $.CONSUME(RCurly)\n        }",
+		"definition": [
+			{
+				"type": "Terminal",
+				"name": "LCurly",
+				"label": "LCurly",
+				"idx": 0,
+				"pattern": "{"
+			},
+			{
+				"type": "NonTerminal",
+				"name": "primary",
+				"idx": 0
+			},
+			{
+				"type": "Terminal",
+				"name": "RCurly",
+				"label": "RCurly",
+				"idx": 0,
+				"pattern": "}"
 			}
 		]
 	}
