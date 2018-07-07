@@ -102,10 +102,9 @@ const BeginMatchExactly = createToken({
 const EndMatchExactly = createToken({ name: "EndMatchExactly", pattern: "$=" })
 const ContainsMatch = createToken({ name: "ContainsMatch", pattern: "*=" })
 
-// TODO: longer alt
 const ImportantSym = createToken({
     name: "ImportantSym",
-    pattern: /important/i
+    pattern: /!important/i
 })
 
 // must must appear before Ident due to common prefix
@@ -119,9 +118,9 @@ const Ident = createToken({
     name: "Ident",
     pattern: MAKE_PATTERN("{{ident}}")
 })
-
 // TODO: keywords vs identifiers
-// const All = createToken({ name: "All", pattern: "all" })
+// TODO: would LParen conflict with other tokens that include LParen?
+const LParen = createToken({ name: "LParen", pattern: "(" })
 const RParen = createToken({ name: "RParen", pattern: ")" })
 const SemiColon = createToken({ name: "SemiColon", pattern: ";" })
 const Percentage = createToken({
@@ -143,8 +142,6 @@ const Comma = createToken({ name: "Comma", pattern: "," })
 const Colon = createToken({ name: "Colon", pattern: ":" })
 const LCurly = createToken({ name: "LCurly", pattern: "{" })
 const RCurly = createToken({ name: "RCurly", pattern: "}" })
-
-const Not = createToken({ name: "Not", pattern: "!" })
 
 const LessLexer = new Lexer(lessTokens)
 
@@ -168,9 +165,11 @@ class LessParser extends Parser {
                     { ALT: () => $.SUBRULE($.variableCall) }
                     // { ALT: () => $.SUBRULE($.mixinDefinition) },
                     // { ALT: () => $.SUBRULE($.declaration) },
-                    // { ALT: () => $.SUBRULE($.mixinCall) },
                     // { ALT: () => $.SUBRULE($.entitiesCall) },
                     // { ALT: () => $.SUBRULE($.atrule) }
+
+                    // mixinCall was modeled as a suffix for selector
+                    // { ALT: () => $.SUBRULE($.mixinCall) },
                 ])
             })
         })
@@ -205,14 +204,28 @@ class LessParser extends Parser {
             $.MANY_SEP({
                 SEP: Comma,
                 DEF: () => {
-                    $.SUBRULE($.selector)
+                    $.SUBRULE($.lessSelector)
                 }
             })
 
             $.SUBRULE($.block)
         })
 
-        $.RULE("mixinCall", () => {})
+        $.RULE("mixinCall", () => {
+            $.CONSUME(LParen)
+            $.OPTION(() => {
+                $.SUBRULE($.args)
+            })
+            $.CONSUME(RParen)
+
+            $.OPTION2(() => {
+                $.SUBRULE($.mixinRuleLookup)
+            })
+
+            $.OPTION3(() => {
+                $.CONSUME(ImportantSym)
+            })
+        })
 
         $.RULE("variableCall", () => {
             $.OR([
@@ -225,7 +238,6 @@ class LessParser extends Parser {
             })
 
             $.OPTION2(() => {
-                $.CONSUME(Not)
                 $.CONSUME(ImportantSym)
             })
         })
@@ -261,6 +273,16 @@ class LessParser extends Parser {
         })
 
         $.RULE("variableCurly", () => {})
+
+        $.RULE("lessSelector", () => {
+            $.SUBRULE($.selector)
+
+            // A mixin call is not valid in all situations
+            // We will evaluate such errors in a post processing phase.
+            $.OPTION(() => {
+                $.SUBRULE($.mixinCall)
+            })
+        })
 
         $.RULE("selector", () => {
             $.SUBRULE($.simple_selector)
@@ -386,6 +408,10 @@ class LessParser extends Parser {
                 { ALT: () => $.CONSUME(NestedPropertyVariable) },
                 { ALT: () => EMPTY_ALT }
             ])
+        })
+
+        $.RULE("args", () => {
+            // TODO: TBD
         })
 
         // very important to call this after all the rules have been defined.
