@@ -161,15 +161,14 @@ class LessParser extends Parser {
             $.MANY(() => {
                 $.OR([
                     { ALT: () => $.SUBRULE($.extendRule) },
-                    { ALT: () => $.SUBRULE($.ruleset) },
-                    { ALT: () => $.SUBRULE($.variableCall) }
-                    // { ALT: () => $.SUBRULE($.mixinDefinition) },
+                    { ALT: () => $.SUBRULE($.variableCall) },
                     // { ALT: () => $.SUBRULE($.declaration) },
                     // { ALT: () => $.SUBRULE($.entitiesCall) },
                     // { ALT: () => $.SUBRULE($.atrule) }
 
-                    // mixinCall was modeled as a suffix for selector
-                    // { ALT: () => $.SUBRULE($.mixinCall) },
+                    // this combines mixincall, mixinDefinition and rule set
+                    // because of common prefix
+                    { ALT: () => $.SUBRULE($.rulesetOrMixin) }
                 ])
             })
         })
@@ -200,15 +199,51 @@ class LessParser extends Parser {
 
         $.RULE("declaration", () => {})
 
-        $.RULE("ruleset", () => {
+        $.RULE("rulesetOrMixin", () => {
             $.MANY_SEP({
                 SEP: Comma,
                 DEF: () => {
-                    $.SUBRULE($.lessSelector)
+                    $.SUBRULE($.selector)
                 }
             })
 
-            $.SUBRULE($.block)
+            $.OR([
+                {
+                    // args indicate a mixin call or definition
+                    ALT: () => {
+                        // TODO: variable argument list syntax inside args indicates a definition
+                        $.SUBRULE($.args)
+                        $.OR([
+                            {
+                                // a guard or block indicates a mixin definition
+                                ALT: () => {
+                                    $.OPTION(() => {
+                                        $.SUBRULE($.guard)
+                                    })
+                                    $.SUBRULE($.block)
+                                }
+                            },
+
+                            // can there also be a lookup ("") here?
+                            // a SemiColon or "!important" indicates a mixin call
+                            {
+                                ALT: () => {
+                                    $.OPTION(() => {
+                                        $.CONSUME(ImportantSym)
+                                    })
+                                    $.CONSUME(SemiColon)
+                                }
+                            }
+                        ])
+                    }
+                },
+                {
+                    // Block indicates a ruleset
+                    ALT: () => {
+                        $.SUBRULE2($.block)
+                    }
+                }
+            ])
         })
 
         $.RULE("mixinCall", () => {
@@ -273,16 +308,6 @@ class LessParser extends Parser {
         })
 
         $.RULE("variableCurly", () => {})
-
-        $.RULE("lessSelector", () => {
-            $.SUBRULE($.selector)
-
-            // A mixin call is not valid in all situations
-            // We will evaluate such errors in a post processing phase.
-            $.OPTION(() => {
-                $.SUBRULE($.mixinCall)
-            })
-        })
 
         $.RULE("selector", () => {
             $.SUBRULE($.simple_selector)
