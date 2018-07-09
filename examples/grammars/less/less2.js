@@ -189,7 +189,7 @@ class LessParser extends Parser {
             $.MANY(() => {
                 $.OR2([
                     { ALT: () => $.SUBRULE($.extendRule) },
-                    { ALT: () => $.SUBRULE($.variableCall) }, // { ALT: () => $.SUBRULE($.atrule) }
+                    { ALT: () => $.SUBRULE($.variableCall) },
                     { ALT: () => $.SUBRULE($.atrule) },
 
                     // { ALT: () => $.SUBRULE($.declaration) },
@@ -317,6 +317,21 @@ class LessParser extends Parser {
             })
 
             $.CONSUME(SemiColon)
+        })
+
+        // TODO: this is css 2.1, css 3 has an expression language here
+        $.RULE("mediaAtRule", () => {
+            $.CONSUME(MediaSym)
+            $.SUBRULE($.media_list)
+            $.CONSUME(LCurly)
+            $.MANY_SEP({
+                SEP: Comma,
+                DEF: () => {
+                    $.SUBRULE($.selector)
+                }
+            })
+            $.SUBRULE($.block)
+            $.CONSUME(RCurly)
         })
 
         $.RULE("media_list", () => {
