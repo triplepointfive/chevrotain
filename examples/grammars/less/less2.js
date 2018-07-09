@@ -79,6 +79,16 @@ const ImportSym = createToken({
     pattern: /@import/
 })
 
+const MediaSym = createToken({
+    name: "MediaSym",
+    pattern: /@media/
+})
+
+const PluginSym = createToken({
+    name: "PluginSym",
+    pattern: /@plugin/
+})
+
 // This group has to be defined BEFORE Ident as their prefix is a valid Ident
 const Uri = createToken({ name: "Uri", pattern: Lexer.NA })
 const UriString = createToken({
@@ -296,9 +306,9 @@ class LessParser extends Parser {
 
         $.RULE("atrule", () => {
             $.OR([
-                { ALT: () => $.SUBRULE($.importAtRule) }
-                // { ALT: () => $.SUBRULE($.pluginAtRule) },
-                // { ALT: () => $.SUBRULE($.mediaAtRule) }
+                { ALT: () => $.SUBRULE($.importAtRule) },
+                { ALT: () => $.SUBRULE($.pluginAtRule) },
+                { ALT: () => $.SUBRULE($.mediaAtRule) }
             ])
         })
 
@@ -308,7 +318,7 @@ class LessParser extends Parser {
 
             $.OR([
                 { ALT: () => $.CONSUME(StringLiteral) },
-                // TODO: is the LESS URI different?
+                // TODO: is the LESS URI different than CSS?
                 { ALT: () => $.CONSUME(Uri) }
             ])
 
@@ -317,6 +327,25 @@ class LessParser extends Parser {
             })
 
             $.CONSUME(SemiColon)
+        })
+
+        $.RULE("pluginAtRule", () => {
+            $.CONSUME(PluginSym)
+            $.OPTION(() => {
+                $.SUBRULE($.pluginArgs)
+            })
+
+            $.OR([
+                { ALT: () => $.CONSUME(StringLiteral) },
+                // TODO: is the LESS URI different?
+                { ALT: () => $.CONSUME(Uri) }
+            ])
+        })
+
+        $.RULE("pluginArgs", () => {
+            $.CONSUME(LParen)
+            // TODO: what is this? it seems like a "permissive token".
+            $.CONSUME(RParen)
         })
 
         // TODO: this is css 2.1, css 3 has an expression language here
