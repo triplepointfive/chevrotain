@@ -29,6 +29,7 @@ FRAGMENT("nmstart", "[_a-zA-Z]|{{nonascii}}|{{escape}}")
 FRAGMENT("nmchar", "[_a-zA-Z0-9-]|{{nonascii}}|{{escape}}")
 FRAGMENT("name", "({{nmchar}})+")
 FRAGMENT("ident", "-?{{nmstart}}{{nmchar}}*")
+FRAGMENT("url", "([!#\\$%&*-~]|{{nonascii}}|{{escape}})*")
 
 function MAKE_PATTERN(def, flags) {
     return XRegExp.build(def, fragments, flags)
@@ -71,6 +72,26 @@ const PropertyVariable = createToken({
 const NestedPropertyVariable = createToken({
     name: "NestedPropertyVariable",
     pattern: /\$@[\w-]+/
+})
+
+const ImportSym = createToken({
+    name: "ImportSym",
+    pattern: /@import/
+})
+
+// This group has to be defined BEFORE Ident as their prefix is a valid Ident
+const Uri = createToken({ name: "Uri", pattern: Lexer.NA })
+const UriString = createToken({
+    name: "UriString",
+    pattern: MAKE_PATTERN(
+        "url\\((:?{{spaces}})?({{string1}}|{{string2}})(:?{{spaces}})?\\)"
+    ),
+    categories: Uri
+})
+const UriUrl = createToken({
+    name: "UriUrl",
+    pattern: MAKE_PATTERN("url\\((:?{{spaces}})?{{url}}(:?{{spaces}})?\\)"),
+    categories: Uri
 })
 
 // must be after VariableCall
@@ -148,6 +169,8 @@ const Colon = createToken({ name: "Colon", pattern: ":" })
 const LCurly = createToken({ name: "LCurly", pattern: "{" })
 const RCurly = createToken({ name: "RCurly", pattern: "}" })
 
+ImportSym.LONGER_ALT = VariableName
+
 const LessLexer = new Lexer(lessTokens)
 
 // ----------------- parser -----------------
@@ -166,10 +189,11 @@ class LessParser extends Parser {
             $.MANY(() => {
                 $.OR2([
                     { ALT: () => $.SUBRULE($.extendRule) },
-                    { ALT: () => $.SUBRULE($.variableCall) },
+                    { ALT: () => $.SUBRULE($.variableCall) }, // { ALT: () => $.SUBRULE($.atrule) }
+                    { ALT: () => $.SUBRULE($.atrule) },
+
                     // { ALT: () => $.SUBRULE($.declaration) },
                     // { ALT: () => $.SUBRULE($.entitiesCall) },
-                    // { ALT: () => $.SUBRULE($.atrule) }
 
                     // this combines mixincall, mixinDefinition and rule set
                     // because of common prefix
@@ -271,7 +295,38 @@ class LessParser extends Parser {
         })
 
         $.RULE("atrule", () => {
-            // TODO: TBD
+            $.OR([
+                { ALT: () => $.SUBRULE($.importAtRule) }
+                // { ALT: () => $.SUBRULE($.pluginAtRule) },
+                // { ALT: () => $.SUBRULE($.mediaAtRule) }
+            ])
+        })
+
+        // TODO: this is the original CSS import is the LESS import different?
+        $.RULE("importAtRule", () => {
+            $.CONSUME(ImportSym)
+
+            $.OR([
+                { ALT: () => $.CONSUME(StringLiteral) },
+                // TODO: is the LESS URI different?
+                { ALT: () => $.CONSUME(Uri) }
+            ])
+
+            $.OPTION(() => {
+                $.SUBRULE($.media_list)
+            })
+
+            $.CONSUME(SemiColon)
+        })
+
+        $.RULE("media_list", () => {
+            $.CONSUME(Ident)
+            $.MANY_SEP({
+                SEP: Comma,
+                DEF: () => {
+                    $.CONSUME2(Ident)
+                }
+            })
         })
 
         // TODO: misaligned with CSS: Missing case insensitive attribute flag
@@ -280,7 +335,7 @@ class LessParser extends Parser {
             $.CONSUME(LSquare)
             $.CONSUME(Ident)
 
-            this.OPTION(() => {
+            $.OPTION(() => {
                 $.OR([
                     { ALT: () => $.CONSUME(Equals) },
                     { ALT: () => $.CONSUME(Includes) },
