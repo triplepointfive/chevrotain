@@ -3,7 +3,7 @@ const serializedGrammar = [
 	{
 		"type": "Rule",
 		"name": "primary",
-		"orgText": "() => {\n            $.MANY(() => {\n                $.OR2([\n                    { ALT: () => $.SUBRULE($.extendRule) },\n                    { ALT: () => $.SUBRULE($.variableCall) },\n                    // { ALT: () => $.SUBRULE($.declaration) },\n                    // { ALT: () => $.SUBRULE($.entitiesCall) },\n                    // { ALT: () => $.SUBRULE($.atrule) }\n\n                    // this combines mixincall, mixinDefinition and rule set\n                    // because of common prefix\n                    { ALT: () => $.SUBRULE($.rulesetOrMixin) }\n                ])\n            })\n        }",
+		"orgText": "() => {\n            $.MANY(() => {\n                $.OR2([\n                    { ALT: () => $.SUBRULE($.extendRule) },\n                    { ALT: () => $.SUBRULE($.variableCall) }, // { ALT: () => $.SUBRULE($.atrule) }\n                    { ALT: () => $.SUBRULE($.atrule) },\n\n                    // { ALT: () => $.SUBRULE($.declaration) },\n                    // { ALT: () => $.SUBRULE($.entitiesCall) },\n\n                    // this combines mixincall, mixinDefinition and rule set\n                    // because of common prefix\n                    { ALT: () => $.SUBRULE($.rulesetOrMixin) }\n                ])\n            })\n        }",
 		"definition": [
 			{
 				"type": "Repetition",
@@ -29,6 +29,16 @@ const serializedGrammar = [
 									{
 										"type": "NonTerminal",
 										"name": "variableCall",
+										"idx": 0
+									}
+								]
+							},
+							{
+								"type": "Flat",
+								"definition": [
+									{
+										"type": "NonTerminal",
+										"name": "atrule",
 										"idx": 0
 									}
 								]
@@ -274,13 +284,126 @@ const serializedGrammar = [
 	{
 		"type": "Rule",
 		"name": "atrule",
-		"orgText": "() => {\n            // TODO: TBD\n        }",
-		"definition": []
+		"orgText": "() => {\n            $.OR([\n                { ALT: () => $.SUBRULE($.importAtRule) }\n                // { ALT: () => $.SUBRULE($.pluginAtRule) },\n                // { ALT: () => $.SUBRULE($.mediaAtRule) }\n            ])\n        }",
+		"definition": [
+			{
+				"type": "Alternation",
+				"idx": 0,
+				"definition": [
+					{
+						"type": "Flat",
+						"definition": [
+							{
+								"type": "NonTerminal",
+								"name": "importAtRule",
+								"idx": 0
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	{
+		"type": "Rule",
+		"name": "importAtRule",
+		"orgText": "() => {\n            $.CONSUME(ImportSym)\n\n            $.OR([\n                { ALT: () => $.CONSUME(StringLiteral) },\n                // TODO: is the LESS URI different?\n                { ALT: () => $.CONSUME(Uri) }\n            ])\n\n            $.OPTION(() => {\n                $.SUBRULE($.media_list)\n            })\n\n            $.CONSUME(SemiColon)\n        }",
+		"definition": [
+			{
+				"type": "Terminal",
+				"name": "ImportSym",
+				"label": "ImportSym",
+				"idx": 0,
+				"pattern": "@import"
+			},
+			{
+				"type": "Alternation",
+				"idx": 0,
+				"definition": [
+					{
+						"type": "Flat",
+						"definition": [
+							{
+								"type": "Terminal",
+								"name": "StringLiteral",
+								"label": "StringLiteral",
+								"idx": 0,
+								"pattern": "(?:\\\"([^\\n\\r\\f\\\"]|(?:\\n|\\r|\\f)|(?:(?:(?:[0-9a-f]){1,6})|\\\\[^\\r\\n\\f0-9a-f]))*\\\")|(?:\\'([^\\n\\r\\f\\']|(?:\\n|\\r|\\f)|(?:(?:(?:[0-9a-f]){1,6})|\\\\[^\\r\\n\\f0-9a-f]))*\\')"
+							}
+						]
+					},
+					{
+						"type": "Flat",
+						"definition": [
+							{
+								"type": "Terminal",
+								"name": "Uri",
+								"label": "Uri",
+								"idx": 0,
+								"pattern": "NOT_APPLICABLE"
+							}
+						]
+					}
+				]
+			},
+			{
+				"type": "Option",
+				"idx": 0,
+				"definition": [
+					{
+						"type": "NonTerminal",
+						"name": "media_list",
+						"idx": 0
+					}
+				]
+			},
+			{
+				"type": "Terminal",
+				"name": "SemiColon",
+				"label": "SemiColon",
+				"idx": 0,
+				"pattern": ";"
+			}
+		]
+	},
+	{
+		"type": "Rule",
+		"name": "media_list",
+		"orgText": "() => {\n            $.CONSUME(Ident)\n            $.MANY_SEP({\n                SEP: Comma,\n                DEF: () => {\n                    $.CONSUME2(Ident)\n                }\n            })\n        }",
+		"definition": [
+			{
+				"type": "Terminal",
+				"name": "Ident",
+				"label": "Ident",
+				"idx": 0,
+				"pattern": "(?:-?(?:[_a-zA-Z]|(?:[\\u0240-\\uffff])|(?:(?:(?:[0-9a-f]){1,6})|\\\\[^\\r\\n\\f0-9a-f]))(?:[_a-zA-Z0-9-]|(?:[\\u0240-\\uffff])|(?:(?:(?:[0-9a-f]){1,6})|\\\\[^\\r\\n\\f0-9a-f]))*)"
+			},
+			{
+				"type": "RepetitionWithSeparator",
+				"idx": 0,
+				"separator": {
+					"type": "Terminal",
+					"name": "Comma",
+					"label": "Comma",
+					"idx": 1,
+					"pattern": ","
+				},
+				"definition": [
+					{
+						"type": "Terminal",
+						"name": "Ident",
+						"label": "Ident",
+						"idx": 2,
+						"pattern": "(?:-?(?:[_a-zA-Z]|(?:[\\u0240-\\uffff])|(?:(?:(?:[0-9a-f]){1,6})|\\\\[^\\r\\n\\f0-9a-f]))(?:[_a-zA-Z0-9-]|(?:[\\u0240-\\uffff])|(?:(?:(?:[0-9a-f]){1,6})|\\\\[^\\r\\n\\f0-9a-f]))*)"
+					}
+				]
+			}
+		]
 	},
 	{
 		"type": "Rule",
 		"name": "attrib",
-		"orgText": "() => {\n            $.CONSUME(LSquare)\n            $.CONSUME(Ident)\n\n            this.OPTION(() => {\n                $.OR([\n                    { ALT: () => $.CONSUME(Equals) },\n                    { ALT: () => $.CONSUME(Includes) },\n                    { ALT: () => $.CONSUME(Dasmatch) },\n                    { ALT: () => $.CONSUME(BeginMatchExactly) },\n                    { ALT: () => $.CONSUME(EndMatchExactly) },\n                    { ALT: () => $.CONSUME(ContainsMatch) }\n                ])\n\n                // REVIEW: misaligned with LESS: LESS allowed % number here, but\n                // that is not valid CSS\n                $.OR2([\n                    { ALT: () => $.CONSUME2(Ident) },\n                    { ALT: () => $.CONSUME(StringLiteral) }\n                ])\n            })\n            $.CONSUME(RSquare)\n        }",
+		"orgText": "() => {\n            $.CONSUME(LSquare)\n            $.CONSUME(Ident)\n\n            $.OPTION(() => {\n                $.OR([\n                    { ALT: () => $.CONSUME(Equals) },\n                    { ALT: () => $.CONSUME(Includes) },\n                    { ALT: () => $.CONSUME(Dasmatch) },\n                    { ALT: () => $.CONSUME(BeginMatchExactly) },\n                    { ALT: () => $.CONSUME(EndMatchExactly) },\n                    { ALT: () => $.CONSUME(ContainsMatch) }\n                ])\n\n                // REVIEW: misaligned with LESS: LESS allowed % number here, but\n                // that is not valid CSS\n                $.OR2([\n                    { ALT: () => $.CONSUME2(Ident) },\n                    { ALT: () => $.CONSUME(StringLiteral) }\n                ])\n            })\n            $.CONSUME(RSquare)\n        }",
 		"definition": [
 			{
 				"type": "Terminal",
