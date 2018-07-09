@@ -200,9 +200,9 @@ class LessParser extends Parser {
             $.CONSUME(SemiColon)
         })
 
-        $.RULE("mixinDefinition", () => {})
-
-        $.RULE("declaration", () => {})
+        $.RULE("declaration", () => {
+            // TODO: TBD
+        })
 
         $.RULE("rulesetOrMixin", () => {
             $.MANY_SEP({
@@ -251,22 +251,6 @@ class LessParser extends Parser {
             ])
         })
 
-        $.RULE("mixinCall", () => {
-            $.CONSUME(LParen)
-            $.OPTION(() => {
-                $.SUBRULE($.args)
-            })
-            $.CONSUME(RParen)
-
-            $.OPTION2(() => {
-                $.SUBRULE($.mixinRuleLookup)
-            })
-
-            $.OPTION3(() => {
-                $.CONSUME(ImportantSym)
-            })
-        })
-
         $.RULE("variableCall", () => {
             $.OR([
                 { ALT: () => $.CONSUME(VariableCall) },
@@ -282,9 +266,13 @@ class LessParser extends Parser {
             })
         })
 
-        $.RULE("entitiesCall", () => {})
+        $.RULE("entitiesCall", () => {
+            // TODO: TBD
+        })
 
-        $.RULE("atrule", () => {})
+        $.RULE("atrule", () => {
+            // TODO: TBD
+        })
 
         // TODO: misaligned with CSS: Missing case insensitive attribute flag
         // https://developer.mozilla.org/en-US/docs/Web/CSS/Attribute_selectors
@@ -312,7 +300,9 @@ class LessParser extends Parser {
             $.CONSUME(RSquare)
         })
 
-        $.RULE("variableCurly", () => {})
+        $.RULE("variableCurly", () => {
+            // TODO: TBD
+        })
 
         $.RULE("selector", () => {
             $.SUBRULE($.simple_selector)
