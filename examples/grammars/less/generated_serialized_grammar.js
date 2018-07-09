@@ -3,7 +3,7 @@ const serializedGrammar = [
 	{
 		"type": "Rule",
 		"name": "primary",
-		"orgText": "() => {\n            $.MANY(() => {\n                $.OR([\n                    { ALT: () => $.SUBRULE($.extendRule) },\n                    { ALT: () => $.SUBRULE($.ruleset) },\n                    { ALT: () => $.SUBRULE($.variableCall) }\n                    // { ALT: () => $.SUBRULE($.mixinDefinition) },\n                    // { ALT: () => $.SUBRULE($.declaration) },\n                    // { ALT: () => $.SUBRULE($.entitiesCall) },\n                    // { ALT: () => $.SUBRULE($.atrule) }\n\n                    // mixinCall was modeled as a suffix for selector\n                    // { ALT: () => $.SUBRULE($.mixinCall) },\n                ])\n            })\n        }",
+		"orgText": "() => {\n            $.MANY(() => {\n                $.OR2([\n                    { ALT: () => $.SUBRULE($.extendRule) },\n                    { ALT: () => $.SUBRULE($.variableCall) },\n                    // { ALT: () => $.SUBRULE($.declaration) },\n                    // { ALT: () => $.SUBRULE($.entitiesCall) },\n                    // { ALT: () => $.SUBRULE($.atrule) }\n\n                    // this combines mixincall, mixinDefinition and rule set\n                    // because of common prefix\n                    { ALT: () => $.SUBRULE($.rulesetOrMixin) }\n                ])\n            })\n        }",
 		"definition": [
 			{
 				"type": "Repetition",
@@ -11,7 +11,7 @@ const serializedGrammar = [
 				"definition": [
 					{
 						"type": "Alternation",
-						"idx": 0,
+						"idx": 2,
 						"definition": [
 							{
 								"type": "Flat",
@@ -28,7 +28,7 @@ const serializedGrammar = [
 								"definition": [
 									{
 										"type": "NonTerminal",
-										"name": "ruleset",
+										"name": "variableCall",
 										"idx": 0
 									}
 								]
@@ -38,7 +38,7 @@ const serializedGrammar = [
 								"definition": [
 									{
 										"type": "NonTerminal",
-										"name": "variableCall",
+										"name": "rulesetOrMixin",
 										"idx": 0
 									}
 								]
@@ -109,8 +109,8 @@ const serializedGrammar = [
 	},
 	{
 		"type": "Rule",
-		"name": "ruleset",
-		"orgText": "() => {\n            $.MANY_SEP({\n                SEP: Comma,\n                DEF: () => {\n                    $.SUBRULE($.lessSelector)\n                }\n            })\n\n            $.SUBRULE($.block)\n        }",
+		"name": "rulesetOrMixin",
+		"orgText": "() => {\n            $.MANY_SEP({\n                SEP: Comma,\n                DEF: () => {\n                    $.SUBRULE($.selector)\n                }\n            })\n\n            $.OR([\n                {\n                    // args indicate a mixin call or definition\n                    ALT: () => {\n                        // TODO: variable argument list syntax inside args indicates a definition\n                        $.SUBRULE($.args)\n                        $.OR2([\n                            {\n                                // a guard or block indicates a mixin definition\n                                ALT: () => {\n                                    $.OPTION(() => {\n                                        $.SUBRULE($.guard)\n                                    })\n                                    $.SUBRULE($.block)\n                                }\n                            },\n\n                            // can there also be a lookup (\"\") here?\n                            // a SemiColon or \"!important\" indicates a mixin call\n                            {\n                                ALT: () => {\n                                    $.OPTION2(() => {\n                                        $.CONSUME(ImportantSym)\n                                    })\n                                    $.CONSUME(SemiColon)\n                                }\n                            }\n                        ])\n                    }\n                },\n                {\n                    // Block indicates a ruleset\n                    ALT: () => {\n                        $.SUBRULE2($.block)\n                    }\n                }\n            ])\n        }",
 		"definition": [
 			{
 				"type": "RepetitionWithSeparator",
@@ -125,15 +125,88 @@ const serializedGrammar = [
 				"definition": [
 					{
 						"type": "NonTerminal",
-						"name": "lessSelector",
+						"name": "selector",
 						"idx": 0
 					}
 				]
 			},
 			{
-				"type": "NonTerminal",
-				"name": "block",
-				"idx": 0
+				"type": "Alternation",
+				"idx": 0,
+				"definition": [
+					{
+						"type": "Flat",
+						"definition": [
+							{
+								"type": "NonTerminal",
+								"name": "args",
+								"idx": 0
+							},
+							{
+								"type": "Alternation",
+								"idx": 2,
+								"definition": [
+									{
+										"type": "Flat",
+										"definition": [
+											{
+												"type": "Option",
+												"idx": 0,
+												"definition": [
+													{
+														"type": "NonTerminal",
+														"name": "guard",
+														"idx": 0
+													}
+												]
+											},
+											{
+												"type": "NonTerminal",
+												"name": "block",
+												"idx": 0
+											}
+										]
+									},
+									{
+										"type": "Flat",
+										"definition": [
+											{
+												"type": "Option",
+												"idx": 2,
+												"definition": [
+													{
+														"type": "Terminal",
+														"name": "ImportantSym",
+														"label": "ImportantSym",
+														"idx": 0,
+														"pattern": "!important"
+													}
+												]
+											},
+											{
+												"type": "Terminal",
+												"name": "SemiColon",
+												"label": "SemiColon",
+												"idx": 0,
+												"pattern": ";"
+											}
+										]
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "Flat",
+						"definition": [
+							{
+								"type": "NonTerminal",
+								"name": "block",
+								"idx": 2
+							}
+						]
+					}
+				]
 			}
 		]
 	},
@@ -413,29 +486,6 @@ const serializedGrammar = [
 		"name": "variableCurly",
 		"orgText": "() => {}",
 		"definition": []
-	},
-	{
-		"type": "Rule",
-		"name": "lessSelector",
-		"orgText": "() => {\n            $.SUBRULE($.selector)\n\n            // A mixin call is not valid in all situations\n            // We will evaluate such errors in a post processing phase.\n            $.OPTION(() => {\n                $.SUBRULE($.mixinCall)\n            })\n        }",
-		"definition": [
-			{
-				"type": "NonTerminal",
-				"name": "selector",
-				"idx": 0
-			},
-			{
-				"type": "Option",
-				"idx": 0,
-				"definition": [
-					{
-						"type": "NonTerminal",
-						"name": "mixinCall",
-						"idx": 0
-					}
-				]
-			}
-		]
 	},
 	{
 		"type": "Rule",
@@ -911,7 +961,36 @@ const serializedGrammar = [
 	{
 		"type": "Rule",
 		"name": "args",
-		"orgText": "() => {\n            // TODO: TBD\n        }",
-		"definition": []
+		"orgText": "() => {\n            $.CONSUME(LParen)\n            $.CONSUME(RParen)\n            // TODO: TBD\n        }",
+		"definition": [
+			{
+				"type": "Terminal",
+				"name": "LParen",
+				"label": "LParen",
+				"idx": 0,
+				"pattern": "("
+			},
+			{
+				"type": "Terminal",
+				"name": "RParen",
+				"label": "RParen",
+				"idx": 0,
+				"pattern": ")"
+			}
+		]
+	},
+	{
+		"type": "Rule",
+		"name": "guard",
+		"orgText": "() => {\n            $.CONSUME(When)\n            // TODO: TBD\n        }",
+		"definition": [
+			{
+				"type": "Terminal",
+				"name": "When",
+				"label": "When",
+				"idx": 0,
+				"pattern": "when"
+			}
+		]
 	}
 ]

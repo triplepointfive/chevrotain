@@ -107,6 +107,11 @@ const ImportantSym = createToken({
     pattern: /!important/i
 })
 
+const When = createToken({
+    name: "When",
+    pattern: /when/
+})
+
 // must must appear before Ident due to common prefix
 const Func = createToken({
     name: "Func",
@@ -159,7 +164,7 @@ class LessParser extends Parser {
 
         $.RULE("primary", () => {
             $.MANY(() => {
-                $.OR([
+                $.OR2([
                     { ALT: () => $.SUBRULE($.extendRule) },
                     { ALT: () => $.SUBRULE($.variableCall) },
                     // { ALT: () => $.SUBRULE($.declaration) },
@@ -213,7 +218,7 @@ class LessParser extends Parser {
                     ALT: () => {
                         // TODO: variable argument list syntax inside args indicates a definition
                         $.SUBRULE($.args)
-                        $.OR([
+                        $.OR2([
                             {
                                 // a guard or block indicates a mixin definition
                                 ALT: () => {
@@ -228,7 +233,7 @@ class LessParser extends Parser {
                             // a SemiColon or "!important" indicates a mixin call
                             {
                                 ALT: () => {
-                                    $.OPTION(() => {
+                                    $.OPTION2(() => {
                                         $.CONSUME(ImportantSym)
                                     })
                                     $.CONSUME(SemiColon)
@@ -436,6 +441,13 @@ class LessParser extends Parser {
         })
 
         $.RULE("args", () => {
+            $.CONSUME(LParen)
+            $.CONSUME(RParen)
+            // TODO: TBD
+        })
+
+        $.RULE("guard", () => {
+            $.CONSUME(When)
             // TODO: TBD
         })
 
